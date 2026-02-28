@@ -84,9 +84,15 @@ Run this chain:
       "output": "spec-draft.md"
     },
     {
+      "agent": "documenter",
+      "task": "Create a canonical design document for '<TOPIC>' (<MODE>) and write final file to '<PLAN_DIR>/design.md'. Synthesize anchored context + PRD + spec into a concise implementation-facing design brief with sections: Context, Chosen Architecture, Component Contracts, Key Flows, Risks, and Decisions.",
+      "reads": ["anchor-context.md", "prd-draft.md", "spec-draft.md"],
+      "output": "design-draft.md"
+    },
+    {
       "agent": "planner",
       "task": "Create a concrete implementation plan for '<TOPIC>' (<MODE>) and write final plan to '<PLAN_DIR>/03-implementation-plan.md'. Use small actionable tasks, explicit verification, dependencies, and rollback notes.",
-      "reads": ["anchor-context.md", "prd-draft.md", "spec-draft.md"],
+      "reads": ["anchor-context.md", "prd-draft.md", "spec-draft.md", "design-draft.md"],
       "output": "plan-draft.md"
     }
   ]
@@ -102,6 +108,7 @@ If async=true:
 
 When synchronous run completes:
 1. Confirm created planning docs in `<PLAN_DIR>`:
+   - `design.md`
    - `01-prd.md`
    - `02-spec.md`
    - `03-implementation-plan.md`

@@ -1,6 +1,6 @@
 ---
 name: tk-plan
-description: Planning workflow (scout -> context-builder -> documenter(PRD) -> documenter(spec) -> planner)
+description: Planning workflow (scout -> context-builder -> documenter(PRD) -> documenter(spec) -> documenter(design) -> planner)
 ---
 
 ## scout
@@ -30,8 +30,15 @@ progress: true
 
 Draft a technical spec for task: {task} with Architecture, Components, Data Flow, Error Handling, Testing Strategy, and Risks.
 
-## planner
+## documenter
 reads: anchor-context.md, prd-draft.md, spec-draft.md
+output: design-draft.md
+progress: true
+
+Create a canonical design brief for task: {task}. Include chosen architecture, component contracts, key flows, risks, and explicit decisions.
+
+## planner
+reads: anchor-context.md, prd-draft.md, spec-draft.md, design-draft.md
 output: plan-draft.md
 progress: true
 

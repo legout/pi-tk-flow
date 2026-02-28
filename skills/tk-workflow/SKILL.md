@@ -41,6 +41,7 @@ Optional project-local agents (trusted repos only):
 ```bash
 /tk-plan <topic>
 /tk-plan <topic> --mode feature|refactor|simplify
+/tk-plan <topic> --from docs/plans/<plan-dir>/design.md
 ```
 
 ### 2) Ticketize
@@ -61,6 +62,7 @@ Optional project-local agents (trusted repos only):
 ## Expected artifacts
 
 - `docs/plans/<date>-<topic>/00-brainstorm.md`
+- `docs/plans/<date>-<topic>/design.md`
 - `docs/plans/<date>-<topic>/01-prd.md`
 - `docs/plans/<date>-<topic>/02-spec.md`
 - `docs/plans/<date>-<topic>/03-implementation-plan.md`

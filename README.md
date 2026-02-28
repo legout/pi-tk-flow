@@ -61,6 +61,7 @@ pi install /Users/volker/coding/libs/pi-tk-flow
 # 1) Planning artifacts (PRD/spec/implementation plan)
 /tk-plan <topic>
 /tk-plan <topic> --mode feature|refactor|simplify
+/tk-plan <topic> --from docs/plans/<plan-dir>/design.md
 
 # 2) Ticket decomposition (safe default: dry-run)
 /tk-ticketize docs/plans/<plan-dir>/03-implementation-plan.md --dry-run
@@ -87,6 +88,7 @@ Flag behavior:
 ## Workflow artifacts
 
 - `docs/plans/<date>-<topic>/00-brainstorm.md`
+- `docs/plans/<date>-<topic>/design.md`
 - `docs/plans/<date>-<topic>/01-prd.md`
 - `docs/plans/<date>-<topic>/02-spec.md`
 - `docs/plans/<date>-<topic>/03-implementation-plan.md`

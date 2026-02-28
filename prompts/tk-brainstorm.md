@@ -77,7 +77,7 @@ Run one of the following chains.
     },
     {
       "agent": "documenter",
-      "task": "Create a decision-ready brainstorming brief for '<TOPIC>' (<MODE>) and write final file to '<PLAN_DIR>/00-brainstorm.md'. Include sections: Problem Frame, Goals & Non-Goals, 2-3 Approach Options with trade-offs, Recommended Direction, Risks, Open Questions, and Decision Checklist.",
+      "task": "Create a decision-ready brainstorming brief for '<TOPIC>' (<MODE>) and write final files to '<PLAN_DIR>/00-brainstorm.md' and '<PLAN_DIR>/design.md' (same content). Include sections: Problem Frame, Goals & Non-Goals, 2-3 Approach Options with trade-offs, Recommended Direction, Risks, Open Questions, and Decision Checklist.",
       "reads": ["anchor-context.md"],
       "output": "brainstorm-draft.md"
     }
@@ -116,13 +116,21 @@ Run one of the following chains.
     },
     {
       "agent": "documenter",
-      "task": "Create a decision-ready brainstorming brief for '<TOPIC>' (<MODE>) and write final file to '<PLAN_DIR>/00-brainstorm.md'. Include sections: Problem Frame, Goals & Non-Goals, 2-3 Approach Options with trade-offs, Recommended Direction, Risks, Open Questions, and Decision Checklist. Incorporate research findings where useful.",
+      "task": "Create a decision-ready brainstorming brief for '<TOPIC>' (<MODE>) and write final files to '<PLAN_DIR>/00-brainstorm.md' and '<PLAN_DIR>/design.md' (same content). Include sections: Problem Frame, Goals & Non-Goals, 2-3 Approach Options with trade-offs, Recommended Direction, Risks, Open Questions, and Decision Checklist. Incorporate research findings where useful.",
       "reads": ["anchor-context.md", "research.md"],
       "output": "brainstorm-draft.md"
     }
   ]
 }
 ```
+
+### 3.5 Canonical design artifact (required)
+
+After chain completion (sync mode), ensure both files exist:
+- `<PLAN_DIR>/00-brainstorm.md`
+- `<PLAN_DIR>/design.md`
+
+If one exists but the other is missing, duplicate content so both exist with identical text.
 
 If async=true:
 - Return run id/status immediately.
@@ -132,9 +140,10 @@ If async=true:
 ## 4) Final Response
 
 When synchronous run completes:
-1. Confirm created brainstorming doc:
+1. Confirm created brainstorming docs:
    - `<PLAN_DIR>/00-brainstorm.md`
+   - `<PLAN_DIR>/design.md`
 2. Summarize recommendation + key trade-offs in 5-8 bullets.
 3. Recommend next step:
    - `/tk-plan <topic> --mode <mode>`
-   - optionally with `--from <PLAN_DIR>/00-brainstorm.md`
+   - optionally with `--from <PLAN_DIR>/design.md`
