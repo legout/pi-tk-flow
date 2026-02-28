@@ -1,0 +1,110 @@
+---
+description: Build planning artifacts (PRD, spec, implementation plan) for a new feature/refactor/simplification using subagents
+---
+
+Create planning docs from `$@`.
+
+## 0) Parse Input
+
+Treat `$@` as raw input.
+
+Supported flags:
+- `--mode feature|refactor|simplify` (default: `feature`)
+- `--from <path>` optional seed doc/notes file
+- `--async` run chain in background
+- `--clarify` open chain clarify UI
+
+Rules:
+1. Topic is the remaining non-flag text after parsing.
+2. If topic is empty, STOP and ask for a topic.
+3. If both `--async` and `--clarify` are present, prefer async and set clarify=false.
+4. Reject unknown flags with a short help message.
+
+## 1) Paths
+
+- `DATE = <YYYY-MM-DD>`
+- `TOPIC_SLUG = kebab-case(topic)`
+- `PLAN_DIR = docs/plans/${DATE}-${TOPIC_SLUG}`
+- `CHAIN_DIR = .subagent-runs/tk-plan/${TOPIC_SLUG}`
+
+Ensure directories exist:
+- `docs/plans`
+- `${PLAN_DIR}`
+- `.subagent-runs/tk-plan`
+
+If `--from` is set, verify the file exists before proceeding.
+
+## 2) Subagent Scope Guardrails
+
+- Use existing agents only.
+- Never call subagent management actions create/update/delete.
+- Determine `AGENT_SCOPE`:
+  - if `.pi/agents/.tk-bootstrap.json` exists -> `project`
+  - else -> `user`
+- Preflight:
+  - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
+  - Required agents: `scout`, `context-builder`, `documenter`, `planner`
+- If any required agent is missing, STOP and report missing names.
+
+## 3) Planning Chain
+
+Run this chain:
+
+```json
+{
+  "agentScope": "<AGENT_SCOPE>",
+  "chainDir": "<CHAIN_DIR>",
+  "clarify": <RUN_CLARIFY>,
+  "async": <RUN_ASYNC>,
+  "artifacts": true,
+  "includeProgress": false,
+  "maxOutput": { "bytes": 200000, "lines": 5000 },
+  "chain": [
+    {
+      "agent": "scout",
+      "task": "Scout project context for planning topic '<TOPIC>' (<MODE>). Focus on relevant files, constraints, existing architecture, and test patterns.",
+      "output": "scout-context.md"
+    },
+    {
+      "agent": "context-builder",
+      "task": "Build anchored planning context for '<TOPIC>' (<MODE>). Include constraints from .tf/AGENTS.md and .tf/knowledge when available. If --from path provided, include it in synthesis.",
+      "reads": ["scout-context.md"],
+      "output": "anchor-context.md"
+    },
+    {
+      "agent": "documenter",
+      "task": "Draft a concise Product Requirements Document for '<TOPIC>' (<MODE>) using anchored context. Write final PRD to '<PLAN_DIR>/01-prd.md' with sections: Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope.",
+      "reads": ["anchor-context.md"],
+      "output": "prd-draft.md"
+    },
+    {
+      "agent": "documenter",
+      "task": "Draft a technical spec for '<TOPIC>' (<MODE>) using anchored context and PRD intent. Write final spec to '<PLAN_DIR>/02-spec.md' with sections: Architecture, Components, Data Flow, Error Handling, Observability, Testing Strategy, Rollout & Risks.",
+      "reads": ["anchor-context.md", "prd-draft.md"],
+      "output": "spec-draft.md"
+    },
+    {
+      "agent": "planner",
+      "task": "Create a concrete implementation plan for '<TOPIC>' (<MODE>) and write final plan to '<PLAN_DIR>/03-implementation-plan.md'. Use small actionable tasks, explicit verification, dependencies, and rollback notes.",
+      "reads": ["anchor-context.md", "prd-draft.md", "spec-draft.md"],
+      "output": "plan-draft.md"
+    }
+  ]
+}
+```
+
+If async=true:
+- Return run id/status immediately.
+- State artifact path root `<CHAIN_DIR>`.
+- Tell user to check with `subagent_status`.
+
+## 4) Final Response
+
+When synchronous run completes:
+1. Confirm created planning docs in `<PLAN_DIR>`:
+   - `01-prd.md`
+   - `02-spec.md`
+   - `03-implementation-plan.md`
+2. Summarize key decisions in 5-10 bullets.
+3. Recommend next step:
+   - ` /tk-ticketize <PLAN_DIR>/03-implementation-plan.md --dry-run`
