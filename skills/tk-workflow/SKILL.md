@@ -41,14 +41,14 @@ Optional project-local agents (trusted repos only):
 ```bash
 /tk-plan <topic>
 /tk-plan <topic> --mode feature|refactor|simplify
-/tk-plan <topic> --from docs/plans/<plan-dir>/design.md
+/tk-plan <topic> --from .tf/plans/<plan-dir>/design.md
 ```
 
 ### 2) Ticketize
 
 ```bash
-/tk-ticketize docs/plans/<plan-dir>/03-implementation-plan.md --dry-run
-/tk-ticketize docs/plans/<plan-dir>/03-implementation-plan.md --create
+/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run
+/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --create
 ```
 
 ### 3) Implement
@@ -61,13 +61,13 @@ Optional project-local agents (trusted repos only):
 
 ## Expected artifacts
 
-- `docs/plans/<date>-<topic>/00-brainstorm.md`
-- `docs/plans/<date>-<topic>/design.md`
-- `docs/plans/<date>-<topic>/01-prd.md`
-- `docs/plans/<date>-<topic>/02-spec.md`
-- `docs/plans/<date>-<topic>/03-implementation-plan.md`
-- `docs/plans/<date>-<topic>/04-ticket-breakdown.md`
-- `docs/plans/<date>-<topic>/tickets.yaml`
+- `.tf/plans/<date>-<topic>/00-brainstorm.md`
+- `.tf/plans/<date>-<topic>/design.md`
+- `.tf/plans/<date>-<topic>/01-prd.md`
+- `.tf/plans/<date>-<topic>/02-spec.md`
+- `.tf/plans/<date>-<topic>/03-implementation-plan.md`
+- `.tf/plans/<date>-<topic>/04-ticket-breakdown.md`
+- `.tf/plans/<date>-<topic>/tickets.yaml`
 - `.subagent-runs/*` chain artifacts
 - `.tf/knowledge/` reusable research cache
 - `.tf/progress.md` appended progress entries

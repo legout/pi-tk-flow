@@ -25,11 +25,11 @@ Rules:
 
 - `DATE = <YYYY-MM-DD>`
 - `TOPIC_SLUG = kebab-case(topic)`
-- `PLAN_DIR = docs/plans/${DATE}-${TOPIC_SLUG}`
+- `PLAN_DIR = .tf/plans/${DATE}-${TOPIC_SLUG}`
 - `CHAIN_DIR = .subagent-runs/tk-brainstorm/${TOPIC_SLUG}`
 
 Ensure directories exist:
-- `docs/plans`
+- `.tf/plans`
 - `${PLAN_DIR}`
 - `.subagent-runs/tk-brainstorm`
 

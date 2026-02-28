@@ -16,7 +16,7 @@ Supported flags:
 - `--clarify` open chain clarify UI
 
 Rules:
-1. First non-flag token is `SOURCE_PATH` (typically `docs/plans/.../03-implementation-plan.md`).
+1. First non-flag token is `SOURCE_PATH` (typically `.tf/plans/.../03-implementation-plan.md`).
 2. If `SOURCE_PATH` is missing, STOP and ask for it.
 3. If both `--create` and `--dry-run` are present, STOP and ask user to choose one.
 4. Default mode is `dry-run`.
