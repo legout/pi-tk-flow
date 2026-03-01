@@ -47,20 +47,27 @@ Required process:
    - if nothing to commit, record that explicitly.
 
 5. **Append progress to `.tf/progress.md`**:
-   ```markdown
-   ## <ISO timestamp> | <ticket-id> | <status>
+   - **CRITICAL: Use `edit` tool to append, NOT `write` (which overwrites)**
+   - If file doesn't exist, use `write` to create it first
+   - Use `edit` with `oldText` as the last line of existing content and `newText` as that line plus your new entry
+   - Alternatively, use `bash` with `echo "..." >> .tf/progress.md`
+   - Entry format:
+     ```markdown
+     ## <ISO timestamp> | <ticket-id> | <status>
 
-   - Path: <A/B/C>
-   - Research: <yes/no>
-   - Summary: <1-2 sentence summary>
-   - Files: <comma-separated list of key files changed>
-   - Tests: <passed/failed/skipped>
-   - Commit: <hash or "none">
-   - Chain: .subagent-runs/<ticket-id>
-   ```
+     - Path: <A/B/C>
+     - Research: <yes/no>
+     - Summary: <1-2 sentence summary>
+     - Files: <comma-separated list of key files changed>
+     - Tests: <passed/failed/skipped>
+     - Commit: <hash or "none">
+     - Chain: .subagent-runs/<ticket-id>
+     ```
 
 6. **Conditionally append lessons to `.tf/AGENTS.md`**:
    - Read existing `.tf/AGENTS.md` first.
+   - **CRITICAL: Use `edit` tool to append, NOT `write` (which overwrites)**
+   - If file doesn't exist, use `write` to create it with a header first
    - Add a lesson **only if BOTH are true**:
      1. **New**: not already captured (check for semantic duplicates)
      2. **Useful**: likely to improve future ticket implementations
@@ -68,7 +75,7 @@ Required process:
      - ticket-specific trivia
      - obvious/general advice
      - duplicates or near-duplicates
-   - Format:
+   - Lesson format:
      ```markdown
      ## Lesson: <short-title>
      <1-2 sentence description of the reusable insight>
@@ -124,3 +131,4 @@ Rules:
 - Keep the `tk add-note` content concise, factual, and implementation-relevant.
 - Lessons must be genuinely reusable, not ticket-specific.
 - Keep the close summary short and audit-friendly.
+- **NEVER use `write` on `.tf/progress.md` or `.tf/AGENTS.md` if they exist — use `edit` to append, or `bash` with `>>`**.
