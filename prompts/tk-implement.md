@@ -91,8 +91,8 @@ Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 | **Complexity** | Config, docs, small fixes | Features, integrations | AI, novel algorithms, library-heavy |
 | **Research needed?** | No (existing knowledge sufficient) | Maybe (check knowledge first) | Yes (new domain/libraries) |
 | **LOC estimate** | <50 | 50-200 | >200 |
-| **Validation** | Review only | Review → Test | Review + Test (parallel) |
-| **Chain steps** | scout→context→worker→reviewer→closer | scout→context→planner→worker→reviewer→tester→closer | scout→context→**research**→planner→worker→**parallel review+test**→fixer→closer |
+| **Validation** | Review only | Review + Test (parallel) | Review + Test (parallel) |
+| **Chain steps** | scout→context→worker→reviewer→closer | scout→context→planner→worker→**parallel review+test**→closer | scout→context→**parallel research**→planner→worker→**parallel review+test**→fixer→closer |
 
 ### Decision Rules
 
@@ -119,6 +119,11 @@ Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 ## 3. Execute Chosen Path
 
 Before execution, run path-specific preflight (from guardrails above) and stop if any required agent is missing.
+
+**CRITICAL: Preserve `parallel` structure exactly.** When constructing the `subagent` call:
+- Keep `{"parallel": [...]}` as a single object in the chain array
+- Do NOT expand parallel blocks into separate sequential steps
+- The `concurrency` and `failFast` fields must remain inside the parallel object
 
 ### Path A: Minimal
 
@@ -153,8 +158,14 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
   "chain": [
     { "agent": "planner", "task": "Create implementation plan for ticket <TICKET_ID>.", "reads": ["anchor-context.md"], "output": "plan.md" },
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
-    { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
-    { "agent": "tester", "task": "Test implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "review.md"], "output": "test-results.md" },
+    {
+      "parallel": [
+        { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
+        { "agent": "tester", "task": "Test implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
+      ],
+      "concurrency": 2,
+      "failFast": false
+    },
     { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md, test-results.md. Writes: .tf/progress.md (append entry), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md"], "output": "close-summary.md" }
   ]
 }
