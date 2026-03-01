@@ -39,30 +39,43 @@ Optional project-local agents (trusted repos only):
 ### 1) Plan
 
 ```bash
-/tk-plan <topic>
+/tk-plan <topic>                          # fast mode (default) — parallel PRD/Spec/Design
+/tk-plan <topic> --thorough               # sequential with full synthesis
 /tk-plan <topic> --mode feature|refactor|simplify
-/tk-plan <topic> --from .tf/plans/<plan-dir>/design.md
+/tk-plan <topic> --from .tf/plans/<plan-dir>/00-design.md
 ```
+
+**Fast vs Thorough:**
+- `--fast` (default): PRD, Spec, and Design created in parallel (~30% faster)
+- `--thorough`: Sequential PRD → Spec → Design with full cross-synthesis (higher quality docs)
 
 ### 2) Ticketize
 
 ```bash
-/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run
-/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --create
+/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md           # create tickets (default)
+/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run # preview only
 ```
 
 ### 3) Implement
 
 ```bash
-/tk-implement <ticket-id>
-/tk-implement <ticket-id> --async
-/tk-implement <ticket-id> --clarify
+/tk-implement <ticket-id>         # main agent decides path after analysis
+/tk-implement <ticket-id> --async # background execution
 ```
+
+**How it works:**
+1. Always runs `scout` → `context-builder` first
+2. **YOU (the main agent)** analyze the ticket and anchor context
+3. Choose the path:
+   - **Path A (Minimal)**: Simple config/docs/fixes. No research. Review only.
+   - **Path B (Standard)**: Features/integrations. Planner + sequential review→test.
+   - **Path C (Deep)**: Complex/AI/novel work. Research (if needed) + parallel review+test.
+4. Research is never skipped when context identifies knowledge gaps
 
 ## Expected artifacts
 
 - `.tf/plans/<date>-<topic>/00-brainstorm.md`
-- `.tf/plans/<date>-<topic>/design.md`
+- `.tf/plans/<date>-<topic>/00-design.md`
 - `.tf/plans/<date>-<topic>/01-prd.md`
 - `.tf/plans/<date>-<topic>/02-spec.md`
 - `.tf/plans/<date>-<topic>/03-implementation-plan.md`
@@ -77,4 +90,6 @@ Optional project-local agents (trusted repos only):
 
 - Default agent scope for safety is `user`.
 - If you bootstrap with `--scope project`, align prompt agent scope accordingly (`project` or `both`).
-- `tk-ticketize` defaults to dry-run unless `--create` is explicitly passed.
+- `tk-ticketize` defaults to `--create` (creates tickets immediately). Use `--dry-run` to preview.
+- `tk-plan` defaults to `--fast` (parallel documenters). Use `--thorough` for sequential synthesis.
+- `tk-implement`: Main agent decides path after analyzing ticket. Research is never skipped when needed.

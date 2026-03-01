@@ -16,6 +16,7 @@ A reusable pi package for tk-driven planning + ticket implementation workflows.
 - Reusable chain presets under `assets/chains/`:
   - `tk-brainstorm.chain.md`
   - `tk-plan.chain.md`
+  - `tk-plan-thorough.chain.md`
   - `tk-ticketize.chain.md`
   - `tk-path-a.chain.md`
   - `tk-path-b.chain.md`
@@ -59,15 +60,16 @@ pi install /Users/volker/coding/libs/pi-tk-flow
 /tk-brainstorm <topic> --mode feature|refactor|simplify --research
 
 # 1) Planning artifacts (PRD/spec/implementation plan)
-/tk-plan <topic>
+/tk-plan <topic>                          # fast mode (default)
+/tk-plan <topic> --thorough               # sequential synthesis mode
 /tk-plan <topic> --mode feature|refactor|simplify
-/tk-plan <topic> --from .tf/plans/<plan-dir>/design.md
+/tk-plan <topic> --from .tf/plans/<plan-dir>/00-design.md
 
-# 2) Ticket decomposition (safe default: dry-run)
+# 2) Ticket decomposition (default creates tickets)
+/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md
 /tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run
-/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --create
 
-# 3) Implementation of a ticket
+# 3) Implementation of a ticket (main agent chooses path)
 /tk-implement <ticket-id>
 /tk-implement <ticket-id> --async
 /tk-implement <ticket-id> --clarify
@@ -77,7 +79,8 @@ Flag behavior:
 - `--async`: background mode (`async: true`)
 - `--clarify`: open chain clarify TUI (`clarify: true`)
 - If both are passed, async wins and clarify is disabled for deterministic background execution.
-- `tk-ticketize` defaults to dry-run unless `--create` is explicitly passed.
+- `tk-plan` supports `--fast` (default) and `--thorough`.
+- `tk-ticketize` defaults to create mode. Use `--dry-run` to preview without creating tickets.
 
 ## Scope behavior
 
@@ -88,7 +91,7 @@ Flag behavior:
 ## Workflow artifacts
 
 - `.tf/plans/<date>-<topic>/00-brainstorm.md`
-- `.tf/plans/<date>-<topic>/design.md`
+- `.tf/plans/<date>-<topic>/00-design.md`
 - `.tf/plans/<date>-<topic>/01-prd.md`
 - `.tf/plans/<date>-<topic>/02-spec.md`
 - `.tf/plans/<date>-<topic>/03-implementation-plan.md`
