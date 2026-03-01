@@ -1,6 +1,6 @@
 ---
 name: tk-path-c
-description: Deep tk workflow (sequential chain preset; convert research/validation to parallel in clarify when needed, ends with tk-closer)
+description: Deep tk workflow (sequential preset; convert research/validation to parallel in clarify when needed, ends with tk-closer)
 ---
 
 ## scout
@@ -63,7 +63,7 @@ reads: implementation.md, review.md, test-results.md
 output: fixes.md
 progress: true
 
-Fix critical/major issues for task: {task}.
+Fix critical/major issues for task: {task}. Prioritize test failures and critical review issues first.
 
 ## documenter
 reads: implementation.md, review.md, fixes.md
