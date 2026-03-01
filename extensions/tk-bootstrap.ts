@@ -15,13 +15,20 @@ type InstallStats = {
 
 function parseScope(args: string): Scope {
 	const normalized = args.trim().toLowerCase();
-	if (normalized.includes("--scope project") || normalized === "project") return "project";
-	if (normalized.includes("--scope user") || normalized === "user") return "user";
+	if (!normalized) return "user";
+
+	const projectMatch = normalized.match(/(?:^|\s)--scope(?:\s+|=)project(?:\s|$)/);
+	if (projectMatch || normalized === "project") return "project";
+
+	const userMatch = normalized.match(/(?:^|\s)--scope(?:\s+|=)user(?:\s|$)/);
+	if (userMatch || normalized === "user") return "user";
+
 	return "user";
 }
 
 function parseFlag(args: string, flag: string): boolean {
-	return args.split(/\s+/).includes(flag);
+	const escaped = flag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return new RegExp(`(?:^|\\s)${escaped}(?:\\s|$)`).test(args);
 }
 
 async function ensureDir(dir: string): Promise<void> {
