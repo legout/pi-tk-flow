@@ -28,8 +28,11 @@ Implementation presets include a final `tk-closer` step for commit + `tk add-not
 ## Install
 
 ```bash
-pi install /Users/volker/coding/libs/pi-tk-flow
-# or later via npm/git
+# latest main
+pi install git:github.com/legout/pi-tk-flow
+
+# or pin a release tag
+pi install git:github.com/legout/pi-tk-flow@v0.1.5
 ```
 
 ### pi-subagents prerequisite
