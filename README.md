@@ -32,14 +32,18 @@ pi install /Users/volker/coding/libs/pi-tk-flow
 # or later via npm/git
 ```
 
-### pi-subagents dependency
+### pi-subagents prerequisite
 
-`pi-tk-flow` includes `pi-subagents` as a package dependency and loads its extensions automatically.
+`pi-tk-flow` expects the `subagent`/`subagent_status` tools from `pi-subagents`, but does **not** load a bundled copy.
+This avoids duplicate tool/command registration conflicts when `pi-subagents` is already installed globally.
 
-- **npm/git install**: dependency is installed automatically by `pi install`.
-- **local path install**: run `npm install` once in this repo so `node_modules/pi-subagents` exists.
+Install once (if missing):
 
-## Bootstrap agents and chains
+```bash
+pi install npm:pi-subagents
+```
+
+## Bootstrap templates
 
 ```bash
 # install/update user-level agents + chain presets (~/.pi/agent/agents)
@@ -48,9 +52,31 @@ pi install /Users/volker/coding/libs/pi-tk-flow
 # install/update project-level agents + chain presets (.pi/agents)
 /tk-bootstrap --scope project
 
+# also materialize prompts + skills to local directories
+# user scope: ~/.pi/agent/prompts + ~/.pi/agent/skills
+/tk-bootstrap --scope user --copy-all
+
+# project scope: .pi/prompts + .pi/skills
+/tk-bootstrap --scope project --copy-all
+
 # preview only
-/tk-bootstrap --scope user --dry-run
+/tk-bootstrap --scope user --copy-all --dry-run
+
+# preserve local edits (never overwrite changed files)
+/tk-bootstrap --scope project --copy-all --no-overwrite
 ```
+
+Flags:
+- `--copy-prompts`: copy `prompts/*.md` into scope-local prompts directory
+- `--copy-skills`: copy `skills/**` into scope-local skills directory
+- `--copy-all` (alias `--materialize`): copy both prompts and skills
+- `--no-overwrite`: do not replace existing files when content differs (reported as `Skipped`)
+- `--dry-run`: preview create/update/skip counts without writing
+
+Existing file behavior:
+- Missing file → `Created`
+- Existing identical file → `Unchanged`
+- Existing different file → `Updated` by default, or `Skipped` with `--no-overwrite`
 
 ## Run
 

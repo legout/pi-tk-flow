@@ -11,6 +11,12 @@ type InstallStats = {
 	created: string[];
 	updated: string[];
 	unchanged: string[];
+	skipped: string[];
+};
+
+type InstallOptions = {
+	dryRun: boolean;
+	noOverwrite: boolean;
 };
 
 function parseScope(args: string): Scope {
@@ -31,8 +37,20 @@ function parseFlag(args: string, flag: string): boolean {
 	return new RegExp(`(?:^|\\s)${escaped}(?:\\s|$)`).test(args);
 }
 
+function parseCopyOptions(args: string): { copyPrompts: boolean; copySkills: boolean } {
+	const copyAll = parseFlag(args, "--copy-all") || parseFlag(args, "--materialize");
+	return {
+		copyPrompts: copyAll || parseFlag(args, "--copy-prompts"),
+		copySkills: copyAll || parseFlag(args, "--copy-skills"),
+	};
+}
+
 async function ensureDir(dir: string): Promise<void> {
 	await fs.mkdir(dir, { recursive: true });
+}
+
+async function ensureParentDir(filePath: string): Promise<void> {
+	await ensureDir(path.dirname(filePath));
 }
 
 async function readIfExists(file: string): Promise<string | null> {
@@ -48,15 +66,37 @@ async function listTemplates(srcDir: string, suffix: string): Promise<string[]> 
 	return entries.filter((e) => e.isFile() && e.name.endsWith(suffix)).map((e) => e.name).sort();
 }
 
-async function installTemplates(
+async function listFilesRecursive(rootDir: string): Promise<string[]> {
+	const files: string[] = [];
+
+	async function walk(currentDir: string, relativeDir: string): Promise<void> {
+		const entries = await fs.readdir(currentDir, { withFileTypes: true });
+		for (const entry of entries) {
+			const relativePath = relativeDir ? path.join(relativeDir, entry.name) : entry.name;
+			const absolutePath = path.join(currentDir, entry.name);
+			if (entry.isDirectory()) {
+				await walk(absolutePath, relativePath);
+			} else if (entry.isFile()) {
+				files.push(relativePath);
+			}
+		}
+	}
+
+	await walk(rootDir, "");
+	files.sort();
+	return files;
+}
+
+async function installFiles(
 	srcDir: string,
 	dstDir: string,
 	fileNames: string[],
-	dryRun: boolean,
+	options: InstallOptions,
 ): Promise<InstallStats> {
 	const created: string[] = [];
 	const updated: string[] = [];
 	const unchanged: string[] = [];
+	const skipped: string[] = [];
 
 	for (const fileName of fileNames) {
 		const src = path.join(srcDir, fileName);
@@ -66,19 +106,33 @@ async function installTemplates(
 
 		if (dstContent === null) {
 			created.push(fileName);
-			if (!dryRun) await fs.writeFile(dst, srcContent, "utf8");
+			if (!options.dryRun) {
+				await ensureParentDir(dst);
+				await fs.writeFile(dst, srcContent, "utf8");
+			}
 			continue;
 		}
 
 		if (dstContent !== srcContent) {
+			if (options.noOverwrite) {
+				skipped.push(fileName);
+				continue;
+			}
 			updated.push(fileName);
-			if (!dryRun) await fs.writeFile(dst, srcContent, "utf8");
+			if (!options.dryRun) {
+				await ensureParentDir(dst);
+				await fs.writeFile(dst, srcContent, "utf8");
+			}
 		} else {
 			unchanged.push(fileName);
 		}
 	}
 
-	return { created, updated, unchanged };
+	return { created, updated, unchanged, skipped };
+}
+
+function statsLine(label: string, stats: InstallStats): string {
+	return `${label} -> Created: ${stats.created.length}, Updated: ${stats.updated.length}, Unchanged: ${stats.unchanged.length}, Skipped: ${stats.skipped.length}`;
 }
 
 export default function tkBootstrapExtension(pi: ExtensionAPI) {
@@ -86,52 +140,88 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 	const __dirname = path.dirname(__filename);
 	const agentsTemplateDir = path.resolve(__dirname, "..", "assets", "agents");
 	const chainsTemplateDir = path.resolve(__dirname, "..", "assets", "chains");
+	const promptsTemplateDir = path.resolve(__dirname, "..", "prompts");
+	const skillsTemplateDir = path.resolve(__dirname, "..", "skills");
 
 	pi.registerCommand("tk-bootstrap", {
 		description:
-			"Install/update tk workflow subagent templates and chain presets. Usage: /tk-bootstrap [--scope user|project] [--dry-run]",
+			"Install/update tk workflow templates. Usage: /tk-bootstrap [--scope user|project] [--dry-run] [--copy-prompts] [--copy-skills] [--copy-all|--materialize] [--no-overwrite]",
 		handler: async (args, ctx) => {
 			const scope = parseScope(args);
 			const dryRun = parseFlag(args, "--dry-run");
-			const destinationDir =
-				scope === "user"
-					? path.join(os.homedir(), ".pi", "agent", "agents")
-					: path.join(ctx.cwd, ".pi", "agents");
+			const noOverwrite = parseFlag(args, "--no-overwrite");
+			const copyOptions = parseCopyOptions(args);
 
-			await ensureDir(destinationDir);
+			const rootDestinationDir =
+				scope === "user" ? path.join(os.homedir(), ".pi", "agent") : path.join(ctx.cwd, ".pi");
+			const agentsDestinationDir = path.join(rootDestinationDir, "agents");
+			const promptsDestinationDir = path.join(rootDestinationDir, "prompts");
+			const skillsDestinationDir = path.join(rootDestinationDir, "skills");
+			const installOptions: InstallOptions = { dryRun, noOverwrite };
+
+			await ensureDir(agentsDestinationDir);
 
 			const agentFiles = await listTemplates(agentsTemplateDir, ".md");
 			const chainFiles = await listTemplates(chainsTemplateDir, ".chain.md");
 
-			const agentStats = await installTemplates(agentsTemplateDir, destinationDir, agentFiles, dryRun);
-			const chainStats = await installTemplates(chainsTemplateDir, destinationDir, chainFiles, dryRun);
+			const agentStats = await installFiles(agentsTemplateDir, agentsDestinationDir, agentFiles, installOptions);
+			const chainStats = await installFiles(chainsTemplateDir, agentsDestinationDir, chainFiles, installOptions);
 
-			const markerPath = path.join(destinationDir, ".tk-bootstrap.json");
+			let promptStats: InstallStats | null = null;
+			if (copyOptions.copyPrompts) {
+				await ensureDir(promptsDestinationDir);
+				const promptFiles = (await listFilesRecursive(promptsTemplateDir)).filter((file) => file.endsWith(".md"));
+				promptStats = await installFiles(promptsTemplateDir, promptsDestinationDir, promptFiles, installOptions);
+			}
+
+			let skillStats: InstallStats | null = null;
+			if (copyOptions.copySkills) {
+				await ensureDir(skillsDestinationDir);
+				const skillFiles = await listFilesRecursive(skillsTemplateDir);
+				skillStats = await installFiles(skillsTemplateDir, skillsDestinationDir, skillFiles, installOptions);
+			}
+
+			const markerPath = path.join(agentsDestinationDir, ".tk-bootstrap.json");
 			const marker = {
 				package: "pi-tk-flow",
 				scope,
 				installedAt: new Date().toISOString(),
+				agentsDir: agentsDestinationDir,
 				agents: agentFiles,
 				chains: chainFiles,
+				copied: {
+					prompts: copyOptions.copyPrompts,
+					skills: copyOptions.copySkills,
+				},
+				noOverwrite,
+				promptsDir: copyOptions.copyPrompts ? promptsDestinationDir : null,
+				skillsDir: copyOptions.copySkills ? skillsDestinationDir : null,
 			};
 			if (!dryRun) await fs.writeFile(markerPath, JSON.stringify(marker, null, 2) + "\n", "utf8");
 
 			if (ctx.hasUI) {
 				const mode = dryRun ? "DRY RUN" : "APPLIED";
-				ctx.ui.notify(
-					[
-						`/tk-bootstrap (${mode})`,
-						`Scope: ${scope}`,
-						`Destination: ${destinationDir}`,
-						`Agents -> Created: ${agentStats.created.length}, Updated: ${agentStats.updated.length}, Unchanged: ${agentStats.unchanged.length}`,
-						`Chains -> Created: ${chainStats.created.length}, Updated: ${chainStats.updated.length}, Unchanged: ${chainStats.unchanged.length}`,
-					].join("\n"),
-					"info",
-				);
+				const lines = [
+					`/tk-bootstrap (${mode})`,
+					`Scope: ${scope}`,
+					`Overwrite mode: ${noOverwrite ? "no-overwrite (changed files preserved)" : "overwrite changed files"}`,
+					`Root destination: ${rootDestinationDir}`,
+					`Agents/chains destination: ${agentsDestinationDir}`,
+					statsLine("Agents", agentStats),
+					statsLine("Chains", chainStats),
+				];
+
+				if (promptStats) lines.push(statsLine(`Prompts (${promptsDestinationDir})`, promptStats));
+				else lines.push("Prompts -> skipped (use --copy-prompts or --copy-all)");
+
+				if (skillStats) lines.push(statsLine(`Skills (${skillsDestinationDir})`, skillStats));
+				else lines.push("Skills -> skipped (use --copy-skills or --copy-all)");
+
+				ctx.ui.notify(lines.join("\n"), "info");
 
 				if (scope === "project") {
 					ctx.ui.notify(
-						"Project-scoped agents/chains installed. Ensure /tk-implement uses AGENT_SCOPE=project (or both).",
+						"Project-scoped templates installed. Ensure /tk-implement AGENT_SCOPE resolves to project when using .pi/agents/.tk-bootstrap.json.",
 						"warning",
 					);
 				}

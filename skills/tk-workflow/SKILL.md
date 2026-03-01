@@ -21,10 +21,23 @@ Install/update subagent templates and reusable chain presets:
 /tk-bootstrap --scope user
 ```
 
-Optional project-local agents (trusted repos only):
+Optional project-local templates (trusted repos only):
 
 ```bash
 /tk-bootstrap --scope project
+```
+
+Materialize prompts + skills into local scope directories:
+
+```bash
+/tk-bootstrap --scope user --copy-all
+/tk-bootstrap --scope project --copy-all
+```
+
+Preserve local edits (no overwrite when content differs):
+
+```bash
+/tk-bootstrap --scope user --copy-all --no-overwrite
 ```
 
 ## Run workflow
@@ -92,4 +105,5 @@ Optional project-local agents (trusted repos only):
 - If you bootstrap with `--scope project`, align prompt agent scope accordingly (`project` or `both`).
 - `tk-ticketize` defaults to `--create` (creates tickets immediately). Use `--dry-run` to preview.
 - `tk-plan` defaults to `--fast` (parallel documenters). Use `--thorough` for sequential synthesis.
+- `tk-bootstrap` overwrites changed files by default; add `--no-overwrite` to keep local modifications (changed files are skipped).
 - `tk-implement`: Main agent decides path after analyzing ticket. Research is never skipped when needed.
