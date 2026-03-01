@@ -4,7 +4,7 @@ description: Analyze and implement any tk ticket with main-agent path selection
 
 Implement ticket from `$@` (parsed into `<TICKET_ID>` + flags).
 
-**Key principle:** The main agent (you) analyzes the ticket after scout/context-builder and decides which implementation path to use. Research is never skipped when needed.
+**Key principle:** The main agent (you) analyzes `anchor-context.md` after the scout/context-builder chain and decides which implementation path to use. All anchoring (ticket, lessons, knowledge) is handled by context-builder.
 
 ## Parse Input and Runtime Flags
 
@@ -51,31 +51,9 @@ Parsing rules:
 - `includeProgress: false`
 - `maxOutput: { "bytes": 200000, "lines": 5000 }`
 
-## Re-Anchor Context
+## 1. Scout + Context-Builder (Anchoring Chain)
 
-1. Set paths:
-   - `TICKET_ID = <TICKET_ID>`
-   - `CHAIN_DIR = .subagent-runs/<TICKET_ID>`
-   - `KNOWLEDGE_ROOT = .tf/knowledge`
-2. Ensure directories exist
-3. Read `.tf/AGENTS.md` and relevant `.tf/knowledge/**` files
-4. Build context summary from ticket + dependencies + lessons + knowledge
-
-## 1. Read and Analyze the Ticket
-
-Read the ticket file (find with `find . -name "<TICKET_ID>.md" 2>/dev/null`):
-
-- **Title/Description**: What needs to be done?
-- **Tags/Type**: code, config, workflow, frontend, etc.
-- **Dependencies**: Are they complete?
-- **Complexity indicators**:
-  - Simple: Config, docs, small fixes (<50 LOC)
-  - Medium: Features, integrations, workflows (50-200 LOC)
-  - Complex: AI systems, novel algorithms, library-heavy, performance-critical (>200 LOC)
-
-## 2. Scout + Context-Builder (Always First)
-
-Run these sequentially first:
+Ensure `.subagent-runs/<TICKET_ID>` directory exists, then run:
 
 ```json
 {
@@ -87,24 +65,26 @@ Run these sequentially first:
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
-    { 
-      "agent": "scout", 
-      "task": "Scout codebase context for ticket <TICKET_ID>. Focus on relevant files, patterns, tests, and architecture.", 
-      "output": "scout-context.md" 
+    {
+      "agent": "scout",
+      "task": "Scout codebase context for ticket <TICKET_ID>. Focus on relevant files, patterns, tests, and architecture.",
+      "output": "scout-context.md"
     },
-    { 
-      "agent": "context-builder", 
-      "task": "Build re-anchored implementation context for ticket <TICKET_ID>. Synthesize scout output, ticket requirements, .tf/AGENTS.md lessons, and .tf/knowledge. Identify: 1) implementation path complexity, 2) research needs, 3) external libraries involved, 4) testing requirements.", 
-      "reads": ["scout-context.md"], 
-      "output": "anchor-context.md" 
+    {
+      "agent": "context-builder",
+      "task": "Build re-anchored implementation context for ticket <TICKET_ID>. You MUST: 1) Read the ticket file (find with `find . -name \"<TICKET_ID>.md\"`), 2) Read `.tf/AGENTS.md` for lessons learned, 3) Read relevant `.tf/knowledge/**` files for cached research, 4) Synthesize with scout output. Output a structured `anchor-context.md` with: ticket summary, complexity assessment (simple/medium/complex), research gaps (if any), external libraries involved, testing requirements, and recommended implementation path (A/B/C).",
+      "reads": ["scout-context.md"],
+      "output": "anchor-context.md"
     }
   ]
 }
 ```
 
-## 3. YOU Decide the Implementation Path
+The context-builder handles all anchoring: ticket reading, lessons from `.tf/AGENTS.md`, and cached knowledge from `.tf/knowledge/`.
 
-Read `anchor-context.md` and decide based on:
+## 2. YOU Decide the Implementation Path
+
+Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 
 | Factor | Path A (Minimal) | Path B (Standard) | Path C (Deep) |
 |--------|------------------|-------------------|---------------|
@@ -136,7 +116,7 @@ Read `anchor-context.md` and decide based on:
 - Research required (check .tf/knowledge first, then fill gaps)
 - Parallel validation speeds up feedback
 
-## 4. Execute Chosen Path
+## 3. Execute Chosen Path
 
 Before execution, run path-specific preflight (from guardrails above) and stop if any required agent is missing.
 
@@ -154,7 +134,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
   "chain": [
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per anchor context.", "reads": ["anchor-context.md"], "output": "implementation.md" },
     { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md"], "output": "review.md" },
-    { "agent": "tk-closer", "task": "Commit and close gate for ticket <TICKET_ID>.", "reads": ["implementation.md", "review.md"], "output": "close-summary.md" }
+    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md. Writes: .tf/progress.md (append entry), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -175,7 +155,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
     { "agent": "tester", "task": "Test implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "review.md"], "output": "test-results.md" },
-    { "agent": "tk-closer", "task": "Commit and close gate for ticket <TICKET_ID>.", "reads": ["implementation.md", "review.md", "test-results.md"], "output": "close-summary.md" }
+    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md, test-results.md. Writes: .tf/progress.md (append entry), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -198,26 +178,26 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
-    { 
+    {
       "parallel": [
         { "agent": "researcher", "task": "Research external best practices and documentation for ticket <TICKET_ID>. Check .tf/knowledge first; only research gaps.", "reads": ["anchor-context.md"], "output": "research.md" },
         { "agent": "librarian", "task": "Research source-backed library internals for ticket <TICKET_ID> with GitHub permalinks.", "reads": ["anchor-context.md"], "output": "library-research.md" }
-      ], 
-      "concurrency": 2, 
-      "failFast": false 
+      ],
+      "concurrency": 2,
+      "failFast": false
     },
     { "agent": "planner", "task": "Create implementation plan for ticket <TICKET_ID>.", "reads": ["anchor-context.md", "research.md", "library-research.md"], "output": "plan.md" },
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
-    { 
+    {
       "parallel": [
         { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
         { "agent": "tester", "task": "Test implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
-      ], 
-      "concurrency": 2, 
-      "failFast": false 
+      ],
+      "concurrency": 2,
+      "failFast": false
     },
     { "agent": "fixer", "task": "Fix issues from review and test results. Prioritize: test failures > critical review > major review.", "reads": ["review.md", "test-results.md", "implementation.md"], "output": "fixes.md" },
-    { "agent": "tk-closer", "task": "Commit and close gate for ticket <TICKET_ID>.", "reads": ["implementation.md", "review.md", "test-results.md", "fixes.md"], "output": "close-summary.md" }
+    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, persist research, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md, test-results.md, fixes.md, research.md, library-research.md. Writes: .tf/progress.md (append entry), .tf/knowledge (persist reusable research), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "research.md", "library-research.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -236,21 +216,21 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
   "chain": [
     { "agent": "planner", "task": "Create implementation plan for ticket <TICKET_ID> using existing knowledge.", "reads": ["anchor-context.md"], "output": "plan.md" },
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
-    { 
+    {
       "parallel": [
         { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
         { "agent": "tester", "task": "Test implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
-      ], 
-      "concurrency": 2, 
-      "failFast": false 
+      ],
+      "concurrency": 2,
+      "failFast": false
     },
     { "agent": "fixer", "task": "Fix issues from review and test results.", "reads": ["review.md", "test-results.md", "implementation.md"], "output": "fixes.md" },
-    { "agent": "tk-closer", "task": "Commit and close gate for ticket <TICKET_ID>.", "reads": ["implementation.md", "review.md", "test-results.md", "fixes.md"], "output": "close-summary.md" }
+    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md, test-results.md, fixes.md. Writes: .tf/progress.md (append entry), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md"], "output": "close-summary.md" }
   ]
 }
 ```
 
-## 5. Execute and Report
+## 4. Execute and Report
 
 Use `subagent` tool with chosen path and report:
 
@@ -259,33 +239,14 @@ Use `subagent` tool with chosen path and report:
 3. **Summary of what was done**
 4. **Files changed**
 5. **Blockers/decisions**
-6. **Persist new research** to `.tf/knowledge` if applicable
-7. **Append to `.tf/progress.md`**
-8. **Conditionally update `.tf/AGENTS.md`** with new useful lessons
 
-## Git Commit and Ticket Closure (tk-closer)
+Progress tracking and lessons learned are handled by `tk-closer` — no need to manually update `.tf/progress.md` or `.tf/AGENTS.md` in the main loop.
 
-### A) Commit
-1. `git rev-parse --is-inside-work-tree`
-2. `git status --short`
-3. Stage and commit with message: `<TICKET_ID>: <summary>`
+## tk-closer Responsibilities
 
-### B) Add ticket note
-- `tk add-note <TICKET_ID> "..."`
+The `tk-closer` agent handles all post-implementation finalization:
 
-### C) Decide closure
-Close only if:
-- Dependencies complete
-- Implementation complete
-- No blocking issues (critical/major failures)
-- Tests passed
-
-Then: `tk close <TICKET_ID>`
-
-Else: `tk status <TICKET_ID> in-progress`
-
-## Progress Tracking
-
+### A) Progress Tracking
 Append to `.tf/progress.md`:
 - timestamp
 - ticket id
@@ -297,7 +258,40 @@ Append to `.tf/progress.md`:
 - test results
 - chain path: `.subagent-runs/<TICKET_ID>`
 - commit hash
-- commands executed
+
+### B) Lessons Learned
+Append to `.tf/AGENTS.md` **only if BOTH are true**:
+1. **New**: not already captured in `.tf/AGENTS.md`
+2. **Useful**: likely to improve future ticket implementations
+
+Do NOT add:
+- ticket-specific trivia
+- obvious/general advice
+- duplicates or near-duplicates
+
+### C) Research Persistence (Path C only)
+If research was conducted, persist reusable findings to `.tf/knowledge/`:
+- Topic files: `.tf/knowledge/topics/<topic-slug>.md`
+- Ticket research: `.tf/knowledge/tickets/<TICKET_ID>/research.md`
+
+### D) Git Commit
+1. `git rev-parse --is-inside-work-tree`
+2. `git status --short`
+3. Stage and commit with message: `<TICKET_ID>: <summary>`
+
+### E) Ticket Note
+- `tk add-note <TICKET_ID> "..."`
+
+### F) Close Decision
+Close only if:
+- Dependencies complete
+- Implementation complete
+- No blocking issues (critical/major failures)
+- Tests passed
+
+Then: `tk close <TICKET_ID>`
+
+Else: `tk status <TICKET_ID> in-progress`
 
 ## Example Usage
 
