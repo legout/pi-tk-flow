@@ -1,6 +1,6 @@
 ---
 name: tk-path-b
-description: Standard tk workflow (scout -> context-builder -> researcher -> planner -> worker -> reviewer -> tester -> tk-closer)
+description: Standard tk workflow (scout -> context-builder -> researcher -> planner -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tk-closer)
 ---
 
 ## scout
@@ -42,18 +42,39 @@ reads: implementation.md, plan.md
 output: review.md
 progress: true
 
-Review implementation for task: {task}.
+Initial review for task: {task}.
 
 ## tester
-reads: implementation.md, plan.md, review.md
+reads: implementation.md, plan.md
 output: test-results.md
 progress: true
 
-Test implementation for task: {task} and summarize pass/fail + gaps.
+Initial tests for task: {task}. Summarize pass/fail + gaps.
+
+## fixer
+reads: implementation.md, review.md, test-results.md, plan.md
+output: fixes.md
+progress: true
+
+Apply one fix pass for task: {task}. Prioritize test failures and critical/major review issues.
+
+## reviewer
+reads: implementation.md, plan.md, fixes.md
+output: review-post-fix.md
+progress: true
+
+Post-fix re-check review for task: {task}.
+
+## tester
+reads: implementation.md, plan.md, fixes.md
+output: test-results-post-fix.md
+progress: true
+
+Post-fix re-check tests for task: {task}.
 
 ## tk-closer
-reads: implementation.md, review.md, test-results.md
+reads: implementation.md, review.md, test-results.md, fixes.md, review-post-fix.md, test-results-post-fix.md
 output: close-summary.md
 progress: true
 
-Commit and close gate for task: {task}. Determine ticket id, commit changes, and run tk close or tk status in-progress based on review/test outcomes.
+Commit and close gate for task: {task}. maxFixPasses=1 per run. Use post-fix review/test as source of truth when available. Run tk close or tk status in_progress accordingly, and add blocker note when leaving ticket in_progress.

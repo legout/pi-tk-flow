@@ -1,6 +1,6 @@
 ---
 name: tk-path-c
-description: Deep tk workflow (sequential preset; convert research/validation to parallel in clarify when needed, ends with tk-closer)
+description: Deep tk workflow (sequential preset; convert research/validation to parallel in clarify when needed, includes one fixer pass + re-check, ends with tk-closer)
 ---
 
 ## scout
@@ -49,32 +49,46 @@ reads: implementation.md, plan.md
 output: review.md
 progress: true
 
-Review implementation for task: {task}.
+Initial review for task: {task}.
 
 ## tester
-reads: implementation.md, plan.md, review.md
+reads: implementation.md, plan.md
 output: test-results.md
 progress: true
 
-Test implementation for task: {task}.
+Initial tests for task: {task}.
 
 ## fixer
 reads: implementation.md, review.md, test-results.md
 output: fixes.md
 progress: true
 
-Fix critical/major issues for task: {task}. Prioritize test failures and critical review issues first.
+Apply one fix pass for task: {task}. Prioritize test failures and critical review issues first.
+
+## reviewer
+reads: implementation.md, plan.md, fixes.md
+output: review-post-fix.md
+progress: true
+
+Post-fix re-check review for task: {task}.
+
+## tester
+reads: implementation.md, plan.md, fixes.md
+output: test-results-post-fix.md
+progress: true
+
+Post-fix re-check tests for task: {task}.
 
 ## documenter
-reads: implementation.md, review.md, fixes.md
+reads: implementation.md, review.md, fixes.md, review-post-fix.md, test-results-post-fix.md
 output: docs-update.md
 progress: true
 
 Document externally visible changes for task: {task}.
 
 ## tk-closer
-reads: implementation.md, review.md, test-results.md, fixes.md, docs-update.md
+reads: implementation.md, review.md, test-results.md, fixes.md, review-post-fix.md, test-results-post-fix.md, docs-update.md
 output: close-summary.md
 progress: true
 
-Commit and close gate for task: {task}. Determine ticket id, commit changes, and run tk close or tk status in-progress based on review/test/fix outcomes.
+Commit and close gate for task: {task}. maxFixPasses=1 per run. Use post-fix review/test as source of truth when available. Run tk close or tk status in_progress accordingly, and add blocker note when leaving ticket in_progress.

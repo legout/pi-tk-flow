@@ -16,7 +16,7 @@ Goal:
 - Persist reusable research to `.tf/knowledge/` (when research artifacts provided).
 - Add a concise implementation note to the ticket via `tk add-note`.
 - Close the ticket when completion gates pass.
-- Otherwise keep it in-progress (or blocked when explicitly appropriate).
+- Otherwise keep it in_progress (or blocked when explicitly appropriate).
 - Write a concise close summary artifact.
 
 Inputs you may receive via chain `reads`:
@@ -105,9 +105,15 @@ Required process:
     - implementation appears complete for ticket scope
     - required validations/tests passed (if tests exist)
 
+    **Fix-loop policy (strict):**
+    - Assume `maxFixPasses = 1` per `/tk-implement` run.
+    - Prefer post-fix artifacts when present (`review-post-fix.md`, `test-results-post-fix.md`).
+    - If post-fix artifacts still contain critical/major issues, do **not** attempt another fix pass here.
+    - Mark ticket `in_progress`, include remaining blockers in `tk add-note`, and instruct a follow-up run.
+
 11. **Execute tk command**:
     - If gates pass: `tk close <ticket-id>`
-    - If gates do not pass: `tk status <ticket-id> in-progress`
+    - If gates do not pass: `tk status <ticket-id> in_progress`
 
 12. **Write `close-summary.md`**:
     ```markdown
@@ -120,7 +126,7 @@ Required process:
     - Lessons: <count> added to .tf/AGENTS.md
     - Knowledge: <persisted/skipped>
     - Note: added via tk add-note
-    - Decision: <closed/in-progress/blocked>
+    - Decision: <closed/in_progress/blocked>
     - Reason: <brief reason>
     ```
 

@@ -30,8 +30,8 @@ Parsing rules:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
   - Required baseline agents: `scout`, `context-builder`, `worker`, `reviewer`, `tk-closer`
 - Path-specific preflight before executing chosen path:
-  - Path A: baseline only
-  - Path B: baseline + `planner`, `tester`
+  - Path A: baseline + `fixer`
+  - Path B: baseline + `planner`, `tester`, `fixer`
   - Path C with research: baseline + `planner`, `tester`, `fixer`, `researcher`, `librarian`
   - Path C without new research: baseline + `planner`, `tester`, `fixer`
 - If a required agent is missing, **STOP** and report which agent(s) are missing.
@@ -92,7 +92,7 @@ Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 | **Research needed?** | No (existing knowledge sufficient) | Maybe (check knowledge first) | Yes (new domain/libraries) |
 | **LOC estimate** | <50 | 50-200 | >200 |
 | **Validation** | Review only | Review + Test (parallel) | Review + Test (parallel) |
-| **Chain steps** | scout→context→worker→reviewer→closer | scout→context→planner→worker→**parallel review+test**→closer | scout→context→**parallel research**→planner→worker→**parallel review+test**→fixer→closer |
+| **Chain steps** | scout→context→worker→reviewer→fixer→reviewer(re-check)→closer | scout→context→planner→worker→**parallel review+test**→fixer→**parallel re-check**→closer | scout→context→**parallel research**→planner→worker→**parallel review+test**→fixer→**parallel re-check**→closer |
 
 ### Decision Rules
 
@@ -108,7 +108,7 @@ Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 - New feature or integration
 - Some complexity but within existing patterns
 - Planning needed, but anchor context confirms no unresolved research gaps
-- Sequential validation sufficient
+- Standard parallel validation (review + test) is sufficient
 
 **Choose Path C when:**
 - Complex algorithms, AI systems, or novel domains
@@ -138,8 +138,10 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per anchor context.", "reads": ["anchor-context.md"], "output": "implementation.md" },
-    { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md"], "output": "review.md" },
-    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md. Writes: .tf/progress.md (append entry), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md"], "output": "close-summary.md" }
+    { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>. Identify critical/major/minor issues.", "reads": ["implementation.md", "anchor-context.md"], "output": "review.md" },
+    { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID> based on review.md. If no critical/major issues exist, record a no-op rationale.", "reads": ["implementation.md", "review.md", "anchor-context.md"], "output": "fixes.md" },
+    { "agent": "reviewer", "task": "Post-fix re-check for ticket <TICKET_ID>. Validate whether critical/major issues are resolved after fixes.md.", "reads": ["implementation.md", "fixes.md", "anchor-context.md"], "output": "review-post-fix.md" },
+    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix review still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "fixes.md", "review-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -160,13 +162,22 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [
-        { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
-        { "agent": "tester", "task": "Test implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
+        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
+        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
       ],
       "concurrency": 2,
       "failFast": false
     },
-    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md, test-results.md. Writes: .tf/progress.md (append entry), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md"], "output": "close-summary.md" }
+    { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID> using review.md and test-results.md. If no critical/major issues exist, record a no-op rationale.", "reads": ["implementation.md", "review.md", "test-results.md", "plan.md"], "output": "fixes.md" },
+    {
+      "parallel": [
+        { "agent": "reviewer", "task": "Post-fix re-check review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "review-post-fix.md" },
+        { "agent": "tester", "task": "Post-fix re-check tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "test-results-post-fix.md" }
+      ],
+      "concurrency": 2,
+      "failFast": false
+    },
+    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -201,14 +212,22 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [
-        { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
-        { "agent": "tester", "task": "Test implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
+        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
+        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
       ],
       "concurrency": 2,
       "failFast": false
     },
-    { "agent": "fixer", "task": "Fix issues from review and test results. Prioritize: test failures > critical review > major review.", "reads": ["review.md", "test-results.md", "implementation.md"], "output": "fixes.md" },
-    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, persist research, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md, test-results.md, fixes.md, research.md, library-research.md. Writes: .tf/progress.md (append entry), .tf/knowledge (persist reusable research), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "research.md", "library-research.md"], "output": "close-summary.md" }
+    { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID>. Prioritize: test failures > critical review > major review. If no critical/major issues exist, record a no-op rationale.", "reads": ["review.md", "test-results.md", "implementation.md", "plan.md"], "output": "fixes.md" },
+    {
+      "parallel": [
+        { "agent": "reviewer", "task": "Post-fix re-check review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "review-post-fix.md" },
+        { "agent": "tester", "task": "Post-fix re-check tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "test-results-post-fix.md" }
+      ],
+      "concurrency": 2,
+      "failFast": false
+    },
+    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, persist research, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md", "research.md", "library-research.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -229,14 +248,22 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [
-        { "agent": "reviewer", "task": "Review implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
-        { "agent": "tester", "task": "Test implementation for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
+        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
+        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
       ],
       "concurrency": 2,
       "failFast": false
     },
-    { "agent": "fixer", "task": "Fix issues from review and test results.", "reads": ["review.md", "test-results.md", "implementation.md"], "output": "fixes.md" },
-    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. Reads: anchor-context.md, implementation.md, review.md, test-results.md, fixes.md. Writes: .tf/progress.md (append entry), .tf/AGENTS.md (append only NEW+USEFUL lessons), git commit, tk add-note, tk close/status decision.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md"], "output": "close-summary.md" }
+    { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID> using review.md and test-results.md. If no critical/major issues exist, record a no-op rationale.", "reads": ["review.md", "test-results.md", "implementation.md", "plan.md"], "output": "fixes.md" },
+    {
+      "parallel": [
+        { "agent": "reviewer", "task": "Post-fix re-check review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "review-post-fix.md" },
+        { "agent": "tester", "task": "Post-fix re-check tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "test-results-post-fix.md" }
+      ],
+      "concurrency": 2,
+      "failFast": false
+    },
+    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -302,7 +329,13 @@ Close only if:
 
 Then: `tk close <TICKET_ID>`
 
-Else: `tk status <TICKET_ID> in-progress`
+Else: `tk status <TICKET_ID> in_progress`
+
+### G) Fix-loop Policy (Max 1 per run)
+- `maxFixPasses = 1` for each `/tk-implement` run.
+- Use post-fix artifacts (`review-post-fix.md`, `test-results-post-fix.md`) as the source of truth when present.
+- If post-fix re-check still has critical/major issues, do not attempt additional fix passes in the same run.
+- Keep ticket `in_progress`, add a clear blocker note via `tk add-note`, and suggest a follow-up run.
 
 ## Example Usage
 

@@ -1,6 +1,6 @@
 ---
 name: tk-path-a
-description: Minimal tk workflow (scout -> context-builder -> worker -> reviewer -> tk-closer)
+description: Minimal tk workflow (scout -> context-builder -> worker -> reviewer -> fixer -> reviewer re-check -> tk-closer)
 ---
 
 ## scout
@@ -28,11 +28,25 @@ reads: implementation.md, anchor-context.md
 output: review.md
 progress: true
 
-Review implementation for task: {task}. Report critical/major/minor issues and concrete fixes.
+Initial review for task: {task}. Report critical/major/minor issues and concrete fixes.
+
+## fixer
+reads: implementation.md, review.md, anchor-context.md
+output: fixes.md
+progress: true
+
+Apply one fix pass for task: {task} based on review.md. If no critical/major issues exist, record a no-op rationale.
+
+## reviewer
+reads: implementation.md, fixes.md, anchor-context.md
+output: review-post-fix.md
+progress: true
+
+Post-fix re-check for task: {task}. Validate whether critical/major issues are resolved.
 
 ## tk-closer
-reads: implementation.md, review.md
+reads: implementation.md, review.md, fixes.md, review-post-fix.md
 output: close-summary.md
 progress: true
 
-Commit and close gate for task: {task}. Determine ticket id, commit changes, and run tk close or tk status in-progress based on review outcomes.
+Commit and close gate for task: {task}. maxFixPasses=1 per run. Use post-fix review as source of truth when available. Run tk close or tk status in_progress accordingly, and add blocker note when leaving ticket in_progress.
