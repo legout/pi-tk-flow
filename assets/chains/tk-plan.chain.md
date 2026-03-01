@@ -1,6 +1,6 @@
 ---
 name: tk-plan
-description: Planning workflow (scout -> context-builder -> documenter(PRD) -> documenter(spec) -> documenter(design) -> planner)
+description: Fast planning workflow — independent parallel-friendly documenters (PRD, spec, design each read only anchor context)
 ---
 
 ## scout
@@ -24,14 +24,14 @@ progress: true
 Draft a PRD for task: {task} with Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, and Out of Scope.
 
 ## documenter
-reads: anchor-context.md, prd-draft.md
+reads: anchor-context.md
 output: spec-draft.md
 progress: true
 
 Draft a technical spec for task: {task} with Architecture, Components, Data Flow, Error Handling, Testing Strategy, and Risks.
 
 ## documenter
-reads: anchor-context.md, prd-draft.md, spec-draft.md
+reads: anchor-context.md
 output: design-draft.md
 progress: true
 

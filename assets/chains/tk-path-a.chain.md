@@ -45,7 +45,7 @@ progress: true
 Post-fix re-check for task: {task}. Validate whether critical/major issues are resolved.
 
 ## tk-closer
-reads: implementation.md, review.md, fixes.md, review-post-fix.md
+reads: anchor-context.md, implementation.md, review.md, fixes.md, review-post-fix.md
 output: close-summary.md
 progress: true
 

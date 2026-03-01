@@ -1,6 +1,6 @@
 ---
 name: tk-path-b
-description: Standard tk workflow (scout -> context-builder -> researcher -> planner -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tk-closer)
+description: Standard tk workflow (scout -> context-builder -> planner -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tk-closer)
 ---
 
 ## scout
@@ -16,19 +16,12 @@ progress: true
 
 Build re-anchored implementation context for task: {task}. Include constraints from .tf/AGENTS.md and .tf/knowledge when available.
 
-## researcher
-reads: anchor-context.md
-output: research.md
-progress: true
-
-Research best practices for task: {task}. Reuse .tf/knowledge first and only fill gaps.
-
 ## planner
-reads: anchor-context.md, research.md
+reads: anchor-context.md
 output: plan.md
 progress: true
 
-Create implementation plan for task: {task} integrating anchored context and research.
+Create implementation plan for task: {task} using anchored context.
 
 ## worker
 reads: plan.md, anchor-context.md
@@ -73,7 +66,7 @@ progress: true
 Post-fix re-check tests for task: {task}.
 
 ## tk-closer
-reads: implementation.md, review.md, test-results.md, fixes.md, review-post-fix.md, test-results-post-fix.md
+reads: anchor-context.md, implementation.md, review.md, test-results.md, fixes.md, review-post-fix.md, test-results-post-fix.md
 output: close-summary.md
 progress: true
 

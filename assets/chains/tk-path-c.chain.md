@@ -59,7 +59,7 @@ progress: true
 Initial tests for task: {task}.
 
 ## fixer
-reads: implementation.md, review.md, test-results.md
+reads: implementation.md, review.md, test-results.md, plan.md
 output: fixes.md
 progress: true
 
@@ -87,7 +87,7 @@ progress: true
 Document externally visible changes for task: {task}.
 
 ## tk-closer
-reads: implementation.md, review.md, test-results.md, fixes.md, review-post-fix.md, test-results-post-fix.md, docs-update.md
+reads: anchor-context.md, implementation.md, review.md, test-results.md, fixes.md, review-post-fix.md, test-results-post-fix.md, research.md, library-research.md, docs-update.md
 output: close-summary.md
 progress: true
 

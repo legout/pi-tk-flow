@@ -81,7 +81,7 @@ Preserve local edits (no overwrite when content differs):
 2. **YOU (the main agent)** analyze the ticket and anchor context
 3. Choose the path:
    - **Path A (Minimal)**: Simple config/docs/fixes. No research. Review only.
-   - **Path B (Standard)**: Features/integrations. Planner + sequential review→test.
+   - **Path B (Standard)**: Features/integrations. Planner + parallel review+test.
    - **Path C (Deep)**: Complex/AI/novel work. Research (if needed) + parallel review+test.
 4. Research is never skipped when context identifies knowledge gaps
 
