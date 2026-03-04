@@ -1,6 +1,6 @@
 ---
-name: tk-path-a
-description: Minimal tk workflow (scout -> context-builder -> worker -> reviewer -> fixer -> reviewer re-check -> tk-closer)
+name: tf-path-a
+description: Minimal tf workflow (scout -> context-builder -> worker -> reviewer -> fixer -> reviewer re-check -> tf-closer)
 ---
 
 ## scout
@@ -44,7 +44,7 @@ progress: true
 
 Post-fix re-check for task: {task}. Validate whether critical/major issues are resolved.
 
-## tk-closer
+## tf-closer
 reads: anchor-context.md, implementation.md, review.md, fixes.md, review-post-fix.md
 output: close-summary.md
 progress: true

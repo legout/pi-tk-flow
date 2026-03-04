@@ -1,6 +1,6 @@
 ---
-name: tk-path-b
-description: Standard tk workflow (scout -> context-builder -> plan-fast -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tk-closer)
+name: tf-path-b
+description: Standard tf workflow (scout -> context-builder -> plan-fast -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tf-closer)
 ---
 
 ## scout
@@ -65,7 +65,7 @@ progress: true
 
 Post-fix re-check tests for task: {task}.
 
-## tk-closer
+## tf-closer
 reads: anchor-context.md, implementation.md, review.md, test-results.md, fixes.md, review-post-fix.md, test-results-post-fix.md
 output: close-summary.md
 progress: true

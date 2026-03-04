@@ -32,7 +32,7 @@ Determine:
 Set:
 - `PLAN_BASENAME = basename(PLAN_DIR)`
 - `TOPIC_SLUG = PLAN_BASENAME` stripped of date prefix `YYYY-MM-DD-` when present
-- `CHAIN_DIR = .subagent-runs/tk-plan-refine/${TOPIC_SLUG}`
+- `CHAIN_DIR = .subagent-runs/tf-plan-refine/${TOPIC_SLUG}`
 - `KNOWLEDGE_TOPIC_DIR = .tf/knowledge/topics/${TOPIC_SLUG}`
 
 Ensure directories exist:
@@ -74,7 +74,7 @@ Set:
 - Use existing agents only.
 - Never call subagent management actions create/update/delete.
 - Determine `AGENT_SCOPE`:
-  - if `.pi/agents/.tk-bootstrap.json` exists -> `project`
+  - if `.pi/agents/.tf-bootstrap.json` exists -> `project`
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
@@ -83,7 +83,7 @@ Set:
 
 ## 4) Phase 1: analyze + review (skip if already available)
 
-If `<PLAN_DIR>/05-plan-gaps.md` **and** `<PLAN_DIR>/06-plan-review.md` already exist (e.g., from `/tk-plan-check`), skip phase 1. Instead:
+If `<PLAN_DIR>/05-plan-gaps.md` **and** `<PLAN_DIR>/06-plan-review.md` already exist (e.g., from `/tf-plan-check`), skip phase 1. Instead:
 - Copy those two files into `${CHAIN_DIR}/plan-gaps.md` and `${CHAIN_DIR}/plan-review.md`.
 - Ensure knowledge snapshots exist (copy to `<KNOWLEDGE_TOPIC_DIR>/plan-gaps.md` and `<KNOWLEDGE_TOPIC_DIR>/plan-review.md` if missing).
 
@@ -187,5 +187,5 @@ When synchronous run completes:
 2. Report latest ticketization decision (GO/NO-GO).
 3. List persisted knowledge files in `<KNOWLEDGE_TOPIC_DIR>`.
 4. Recommend next step:
-   - if GO: `/tk-ticketize <PLAN_DIR>/03-implementation-plan.md`
-   - if still NO-GO: run `/tk-plan-refine <PLAN_DIR> --thorough`
+   - if GO: `/tf-ticketize <PLAN_DIR>/03-implementation-plan.md`
+   - if still NO-GO: run `/tf-plan-refine <PLAN_DIR> --thorough`

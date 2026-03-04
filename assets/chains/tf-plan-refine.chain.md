@@ -1,5 +1,5 @@
 ---
-name: tk-plan-refine
+name: tf-plan-refine
 description: Refine plan from quality findings (plan-fast -> documenter). Run plan-check beforehand to generate gaps/review.
 ---
 

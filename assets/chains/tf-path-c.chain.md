@@ -1,6 +1,6 @@
 ---
-name: tk-path-c
-description: Deep tk workflow (sequential preset; convert research/validation to parallel in clarify when needed, includes one fixer pass + re-check, ends with tk-closer)
+name: tf-path-c
+description: Deep tf workflow (sequential preset; convert research/validation to parallel in clarify when needed, includes one fixer pass + re-check, ends with tf-closer)
 ---
 
 ## scout
@@ -86,7 +86,7 @@ progress: true
 
 Document externally visible changes for task: {task}.
 
-## tk-closer
+## tf-closer
 reads: anchor-context.md, implementation.md, review.md, test-results.md, fixes.md, review-post-fix.md, test-results-post-fix.md, research.md, library-research.md, docs-update.md
 output: close-summary.md
 progress: true

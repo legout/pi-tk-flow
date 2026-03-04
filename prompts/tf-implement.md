@@ -27,7 +27,7 @@ Parsing rules:
    ```
    Unknown flag: <flag>
 
-   Usage: /tk-implement <TICKET_ID> [flags]
+   Usage: /tf-implement <TICKET_ID> [flags]
 
    Flags:
      --interactive    Run with interactive overlay (supervised, blocking)
@@ -36,7 +36,7 @@ Parsing rules:
      --async          Legacy background mode (no session tracking)
      --clarify        Open chain clarification TUI
 
-   Use /tk-implement --help for full documentation.
+   Use /tf-implement --help for full documentation.
    ```
 
 **Flag Validation Matrix:**
@@ -68,7 +68,7 @@ Validation order:
 - Determine `AGENT_SCOPE` first, then use it consistently on every subagent execution call (single, chain, and parallel).
 - Baseline preflight before any run:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
-  - Required baseline agents: `scout`, `context-builder`, `worker`, `reviewer`, `tk-closer`
+  - Required baseline agents: `scout`, `context-builder`, `worker`, `reviewer`, `tf-closer`
   - Optional optimization agent: `context-merger` (if missing, use fallback chain in section 1e).
 - Path-specific preflight before executing chosen path:
   - Path A: baseline + `fixer`
@@ -76,11 +76,11 @@ Validation order:
   - Path C with research: baseline + `plan-deep`, `tester`, `fixer`, `researcher`, `librarian`
   - Path C without new research: baseline + `plan-deep`, `tester`, `fixer`
 - If a required agent is missing, **STOP** and report which agent(s) are missing.
-- Do not write or modify `.pi/agents/*` as part of `/tk-implement`.
+- Do not write or modify `.pi/agents/*` as part of `/tf-implement`.
 
 ## Determine Agent Scope
 
-1. If `.pi/agents/.tk-bootstrap.json` exists → `AGENT_SCOPE = "project"`
+1. If `.pi/agents/.tf-bootstrap.json` exists → `AGENT_SCOPE = "project"`
 2. Otherwise → `AGENT_SCOPE = "user"`
 3. Use `"both"` only when intentionally overriding user agents with project agents.
 
@@ -423,11 +423,11 @@ fi
 
 ### 2b. Build Nested Command
 
-Construct the inner `/tk-implement` command that runs inside the interactive session:
+Construct the inner `/tf-implement` command that runs inside the interactive session:
 
 ```bash
 # Build base command with recursion guard to prevent nested interactive loops
-INNER_CMD="PI_TK_INTERACTIVE_CHILD=1 pi \"/tk-implement <TICKET_ID>"
+INNER_CMD="PI_TK_INTERACTIVE_CHILD=1 pi \"/tf-implement <TICKET_ID>"
 
 # Pass --clarify if set (allowed with hands-free and dispatch)
 if [ "<RUN_CLARIFY>" = "true" ]; then
@@ -594,7 +594,7 @@ Interactive mode:
   "mode": "interactive",
   "sessionId": "calm-reef",
   "startedAt": "2026-03-04T12:34:56.789Z",
-  "command": "pi \"/tk-implement TICKET-123\"",
+  "command": "pi \"/tf-implement TICKET-123\"",
   "status": "pending"
 }
 ```
@@ -605,7 +605,7 @@ Hands-free mode with clarify:
   "mode": "hands-free",
   "sessionId": "wise-owl",
   "startedAt": "2026-03-04T12:35:01.234Z",
-  "command": "pi \"/tk-implement TICKET-123 --clarify\"",
+  "command": "pi \"/tf-implement TICKET-123 --clarify\"",
   "status": "pending"
 }
 ```
@@ -616,7 +616,7 @@ Dispatch mode:
   "mode": "dispatch",
   "sessionId": "bright-star",
   "startedAt": "2026-03-04T12:35:12.567Z",
-  "command": "pi \"/tk-implement TICKET-123\"",
+  "command": "pi \"/tf-implement TICKET-123\"",
   "status": "pending"
 }
 ```
@@ -663,8 +663,8 @@ Dispatch mode:
    - Valid flags → proceed
 
 3. **Build inner command** (`INNER_CMD`)
-   - Base: `pi "/tk-implement <TICKET_ID>"`
-   - Preserve `--clarify` if set: `pi "/tk-implement <TICKET_ID> --clarify"`
+   - Base: `pi "/tf-implement <TICKET_ID>"`
+   - Preserve `--clarify` if set: `pi "/tf-implement <TICKET_ID> --clarify"`
    - Never pass interactive flags to inner command
 
 4. **Invoke interactive_shell**
@@ -684,7 +684,7 @@ Dispatch mode:
 
 Set `PI_TK_INTERACTIVE_CHILD=1` in the nested command environment to prevent infinite recursion:
 ```bash
-PI_TK_INTERACTIVE_CHILD=1 pi "/tk-implement <TICKET_ID>"
+PI_TK_INTERACTIVE_CHILD=1 pi "/tf-implement <TICKET_ID>"
 ```
 
 **Important:** When any interactive mode is active, SKIP Path A/B/C execution in sections 3-5. The nested command (without interactive flags) will execute the full Path A/B/C flow.
@@ -748,7 +748,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
     { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>. Identify critical/major/minor issues.", "reads": ["implementation.md", "anchor-context.md"], "output": "review.md" },
     { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID> based on review.md. If no critical/major issues exist, record a no-op rationale.", "reads": ["implementation.md", "review.md", "anchor-context.md"], "output": "fixes.md" },
     { "agent": "reviewer", "task": "Post-fix re-check for ticket <TICKET_ID>. Validate whether critical/major issues are resolved after fixes.md.", "reads": ["implementation.md", "fixes.md", "anchor-context.md"], "output": "review-post-fix.md" },
-    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix review still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "fixes.md", "review-post-fix.md"], "output": "close-summary.md" }
+    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix review still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "fixes.md", "review-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -784,7 +784,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
       "concurrency": 2,
       "failFast": false
     },
-    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md"], "output": "close-summary.md" }
+    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -834,7 +834,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
       "concurrency": 2,
       "failFast": false
     },
-    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, persist research, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md", "research.md", "library-research.md"], "output": "close-summary.md" }
+    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, persist research, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md", "research.md", "library-research.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -870,7 +870,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
       "concurrency": 2,
       "failFast": false
     },
-    { "agent": "tk-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md"], "output": "close-summary.md" }
+    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -885,11 +885,11 @@ Use `subagent` tool with chosen path and report:
 4. **Files changed**
 5. **Blockers/decisions**
 
-Progress tracking and lessons learned are handled by `tk-closer` — no need to manually update `.tf/progress.md` or `.tf/AGENTS.md` in the main loop.
+Progress tracking and lessons learned are handled by `tf-closer` — no need to manually update `.tf/progress.md` or `.tf/AGENTS.md` in the main loop.
 
-## tk-closer Responsibilities
+## tf-closer Responsibilities
 
-The `tk-closer` agent handles all post-implementation finalization:
+The `tf-closer` agent handles all post-implementation finalization:
 
 ### A) Progress Tracking
 Append to `.tf/progress.md`:
@@ -939,7 +939,7 @@ Then: `tk close <TICKET_ID>`
 Else: `tk status <TICKET_ID> in_progress`
 
 ### G) Fix-loop Policy (Max 1 per run)
-- `maxFixPasses = 1` for each `/tk-implement` run.
+- `maxFixPasses = 1` for each `/tf-implement` run.
 - Use post-fix artifacts (`review-post-fix.md`, `test-results-post-fix.md`) as the source of truth when present.
 - If post-fix re-check still has critical/major issues, do not attempt additional fix passes in the same run.
 - Keep ticket `in_progress`, add a clear blocker note via `tk add-note`, and suggest a follow-up run.
@@ -947,16 +947,16 @@ Else: `tk status <TICKET_ID> in_progress`
 ## Example Usage
 
 ```
-/tk-implement TICKET-123                        # you decide path after analysis
-/tk-implement TICKET-123 --async                # background execution (legacy)
-/tk-implement TICKET-123 --clarify              # chain clarification TUI
+/tf-implement TICKET-123                        # you decide path after analysis
+/tf-implement TICKET-123 --async                # background execution (legacy)
+/tf-implement TICKET-123 --clarify              # chain clarification TUI
 
 # Interactive modes (new)
-/tk-implement TICKET-123 --interactive          # supervised overlay (blocking)
-/tk-implement TICKET-123 --hands-free           # agent-monitored overlay
-/tk-implement TICKET-123 --dispatch             # background + notification
+/tf-implement TICKET-123 --interactive          # supervised overlay (blocking)
+/tf-implement TICKET-123 --hands-free           # agent-monitored overlay
+/tf-implement TICKET-123 --dispatch             # background + notification
 
 # Valid combinations
-/tk-implement TICKET-123 --hands-free --clarify # clarify then hands-free
-/tk-implement TICKET-123 --dispatch --clarify   # clarify then dispatch
+/tf-implement TICKET-123 --hands-free --clarify # clarify then hands-free
+/tf-implement TICKET-123 --dispatch --clarify   # clarify then dispatch
 ```

@@ -201,3 +201,13 @@ Append one entry per implementation run.
 - Tests: verified (4/4 acceptance criteria passed)
 - Commit: none
 - Chain: .subagent-runs/ptf-cgx4/0502b42c
+
+## 2026-03-04T23:23:22+01:00 | ptf-vzfu | closed
+
+- Path: A
+- Research: no
+- Summary: Validation checklist executed for pi-prompt-template-model extension - all static checks (6 prompts + 19 agents with model frontmatter), extension-on runtime (switch/restore), and extension-off graceful degradation passed. Evidence recorded in 04-progress.md.
+- Files: .tf/plans/2026-03-04-default-models-for-commands/04-progress.md
+- Tests: passed (all validation criteria)
+- Commit: 372d391
+- Chain: .subagent-runs/ptf-vzfu/9336e6e2

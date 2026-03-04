@@ -1,5 +1,5 @@
 ---
-name: tk-brainstorm
+name: tf-brainstorm
 description: Brainstorm workflow with seeded anchoring (sequential preset: scout + context-builder + context-merger, then documenter)
 ---
 

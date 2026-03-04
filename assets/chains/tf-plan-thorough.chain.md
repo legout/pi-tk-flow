@@ -1,5 +1,5 @@
 ---
-name: tk-plan-thorough
+name: tf-plan-thorough
 description: Thorough planning workflow with seeded anchoring (sequential preset: scout + context-builder + context-merger, then PRD→Spec→Design→Plan)
 ---
 

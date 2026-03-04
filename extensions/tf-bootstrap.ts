@@ -143,9 +143,9 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 	const promptsTemplateDir = path.resolve(__dirname, "..", "prompts");
 	const skillsTemplateDir = path.resolve(__dirname, "..", "skills");
 
-	pi.registerCommand("tk-bootstrap", {
+	pi.registerCommand("tf-bootstrap", {
 		description:
-			"Install/update tk workflow templates. Usage: /tk-bootstrap [--scope user|project] [--dry-run] [--copy-prompts] [--copy-skills] [--copy-all|--materialize] [--no-overwrite]",
+			"Install/update tk workflow templates. Usage: /tf-bootstrap [--scope user|project] [--dry-run] [--copy-prompts] [--copy-skills] [--copy-all|--materialize] [--no-overwrite]",
 		handler: async (args, ctx) => {
 			const scope = parseScope(args);
 			const dryRun = parseFlag(args, "--dry-run");
@@ -181,9 +181,9 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 				skillStats = await installFiles(skillsTemplateDir, skillsDestinationDir, skillFiles, installOptions);
 			}
 
-			const markerPath = path.join(agentsDestinationDir, ".tk-bootstrap.json");
+			const markerPath = path.join(agentsDestinationDir, ".tf-bootstrap.json");
 			const marker = {
-				package: "pi-tk-flow",
+				package: "pi-tf-flow",
 				scope,
 				installedAt: new Date().toISOString(),
 				agentsDir: agentsDestinationDir,
@@ -202,7 +202,7 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 			if (ctx.hasUI) {
 				const mode = dryRun ? "DRY RUN" : "APPLIED";
 				const lines = [
-					`/tk-bootstrap (${mode})`,
+					`/tf-bootstrap (${mode})`,
 					`Scope: ${scope}`,
 					`Overwrite mode: ${noOverwrite ? "no-overwrite (changed files preserved)" : "overwrite changed files"}`,
 					`Root destination: ${rootDestinationDir}`,
@@ -221,7 +221,7 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 
 				if (scope === "project") {
 					ctx.ui.notify(
-						"Project-scoped templates installed. Ensure /tk-implement AGENT_SCOPE resolves to project when using .pi/agents/.tk-bootstrap.json.",
+						"Project-scoped templates installed. Ensure /tf-implement AGENT_SCOPE resolves to project when using .pi/agents/.tf-bootstrap.json.",
 						"warning",
 					);
 				}

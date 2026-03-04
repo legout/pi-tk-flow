@@ -1,5 +1,5 @@
 ---
-description: Convert planning docs into tk-ready vertical-slice tickets (creates by default, preview with --dry-run)
+description: Convert planning docs into tf-ready vertical-slice tickets (creates by default, preview with --dry-run)
 model: glm-5
 thinking: medium
 ---
@@ -34,7 +34,7 @@ Rules:
 - Ensure `SOURCE_PATH` exists.
 - Set:
   - `SOURCE_DIR = dirname(SOURCE_PATH)`
-  - `CHAIN_DIR = .subagent-runs/tk-ticketize/<source-slug>`
+  - `CHAIN_DIR = .subagent-runs/tf-ticketize/<source-slug>`
   - `MODE = dry-run|create`
   - `ANALYSIS_MODE = fast|thorough`
 
@@ -43,7 +43,7 @@ Rules:
 - Use existing agents only.
 - Never call subagent management actions create/update/delete.
 - Determine `AGENT_SCOPE`:
-  - if `.pi/agents/.tk-bootstrap.json` exists -> `project`
+  - if `.pi/agents/.tf-bootstrap.json` exists -> `project`
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`

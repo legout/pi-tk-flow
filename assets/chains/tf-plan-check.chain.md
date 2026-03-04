@@ -1,5 +1,5 @@
 ---
-name: tk-plan-check
+name: tf-plan-check
 description: Plan quality gate (scout -> plan-gap-analyzer -> plan-reviewer)
 ---
 

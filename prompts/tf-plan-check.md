@@ -32,7 +32,7 @@ Determine:
 Set:
 - `PLAN_BASENAME = basename(PLAN_DIR)`
 - `TOPIC_SLUG = PLAN_BASENAME` stripped of date prefix `YYYY-MM-DD-` when present
-- `CHAIN_DIR = .subagent-runs/tk-plan-check/${TOPIC_SLUG}`
+- `CHAIN_DIR = .subagent-runs/tf-plan-check/${TOPIC_SLUG}`
 - `KNOWLEDGE_TOPIC_DIR = .tf/knowledge/topics/${TOPIC_SLUG}`
 
 Ensure directories exist:
@@ -72,7 +72,7 @@ Set:
 - Use existing agents only.
 - Never call subagent management actions create/update/delete.
 - Determine `AGENT_SCOPE`:
-  - if `.pi/agents/.tk-bootstrap.json` exists -> `project`
+  - if `.pi/agents/.tf-bootstrap.json` exists -> `project`
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
@@ -161,5 +161,5 @@ When synchronous run completes:
    - top 3 blockers (if NO-GO)
 3. Note analysis mode used (fast/thorough).
 4. Recommend next step:
-   - if GO: `/tk-ticketize <PLAN_DIR>/03-implementation-plan.md`
-   - if NO-GO: `/tk-plan-refine <PLAN_DIR>`
+   - if GO: `/tf-ticketize <PLAN_DIR>/03-implementation-plan.md`
+   - if NO-GO: `/tf-plan-refine <PLAN_DIR>`

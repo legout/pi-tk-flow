@@ -1,6 +1,6 @@
-# tk-workflow Skill
+# tf-workflow Skill
 
-Operator guidance for the pi-tk-flow ticket-driven development workflow.
+Operator guidance for the pi-tf-flow ticket-driven development workflow.
 
 ## When to Use Which Execution Mode
 
@@ -49,13 +49,13 @@ The `--clarify` flag opens a TUI for confirming chain steps before execution:
 
 ```bash
 # Good: Clarify what will happen, then let it run hands-free
-/tk-implement TICKET-123 --hands-free --clarify
+/tf-implement TICKET-123 --hands-free --clarify
 
 # Good: Clarify then dispatch
-/tk-implement TICKET-123 --dispatch --clarify
+/tf-implement TICKET-123 --dispatch --clarify
 
 # Invalid: Interactive already shows everything, clarify conflicts
-/tk-implement TICKET-123 --interactive --clarify  # ❌ ERROR
+/tf-implement TICKET-123 --interactive --clarify  # ❌ ERROR
 ```
 
 ## Session Lifecycle
@@ -64,20 +64,20 @@ The `--clarify` flag opens a TUI for confirming chain steps before execution:
 
 ```bash
 # Interactive - you supervise
-/tk-implement TICKET-123 --interactive
+/tf-implement TICKET-123 --interactive
 # → Overlay opens showing live output
 # → Ctrl+T to transfer output to agent context
 # → Ctrl+B to background (keep running, check later)
 # → Ctrl+Q for detach menu (transfer/background/kill)
 
 # Hands-free - agent monitors
-/tk-implement TICKET-123 --hands-free
+/tf-implement TICKET-123 --hands-free
 # → Returns immediately with session ID
 # → Agent polls every ~60 seconds
 # → You can /attach anytime to take over
 
 # Dispatch - notification on complete
-/tk-implement TICKET-123 --dispatch
+/tf-implement TICKET-123 --dispatch
 # → Returns immediately with session ID
 # → Runs headless
 # → Agent notified when done
@@ -112,7 +112,7 @@ Session metadata persists in `.subagent-runs/<ticket>/session.json`:
   "mode": "dispatch",
   "sessionId": "calm-reef",
   "startedAt": "2026-03-04T12:34:56Z",
-  "command": "pi \"/tk-implement TICKET-123\"",
+  "command": "pi \"/tf-implement TICKET-123\"",
   "status": "completed"
 }
 ```
@@ -169,7 +169,7 @@ These are not configurable via flags currently — you can take over with `/atta
 
 ```bash
 # Start interactive, then background when comfortable
-/tk-implement TICKET-123 --interactive
+/tf-implement TICKET-123 --interactive
 # ... watch initial progress ...
 # Ctrl+B to background
 # ... do other work ...
@@ -180,7 +180,7 @@ These are not configurable via flags currently — you can take over with `/atta
 
 ```bash
 # Review the plan, then let it run
-/tk-implement TICKET-123 --dispatch --clarify
+/tf-implement TICKET-123 --dispatch --clarify
 # ... TUI opens showing planned chain steps ...
 # Approve steps, then session runs headless
 # Agent notified when complete
@@ -190,9 +190,9 @@ These are not configurable via flags currently — you can take over with `/atta
 
 ```bash
 # Queue up several tickets to run in parallel
-/tk-implement TICKET-100 --dispatch
-/tk-implement TICKET-101 --dispatch
-/tk-implement TICKET-102 --dispatch
+/tf-implement TICKET-100 --dispatch
+/tf-implement TICKET-101 --dispatch
+/tf-implement TICKET-102 --dispatch
 # ... check /sessions for status of all three
 ```
 
@@ -218,5 +218,5 @@ Legacy `--async` continues to work but new interactive modes are preferred for h
 ## See Also
 
 - `README.md` — Full workflow documentation
-- `prompts/tk-implement.md` — Implementation prompt template
+- `prompts/tf-implement.md` — Implementation prompt template
 - `.tf/plans/*/02-spec.md` — Design specifications for interactive features

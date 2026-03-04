@@ -1,5 +1,5 @@
 ---
-name: tk-ticketize
+name: tf-ticketize
 description: Ticketization workflow (scout -> ticketizer) from planning docs to tk-ready slices
 ---
 

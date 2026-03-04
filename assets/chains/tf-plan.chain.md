@@ -1,5 +1,5 @@
 ---
-name: tk-plan
+name: tf-plan
 description: Fast planning workflow with seeded anchoring (sequential preset: scout + context-builder + context-merger, then PRD/spec/design + plan)
 ---
 

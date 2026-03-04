@@ -1,6 +1,6 @@
-# pi-tk-flow-ui
+# pi-tf-flow-ui
 
-Textual TUI for pi-tk-flow ticket management.
+Textual TUI for pi-tf-flow ticket management.
 
 ## Installation
 

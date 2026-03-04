@@ -1,47 +1,47 @@
-# pi-tk-flow
+# pi-tf-flow
 
-A reusable pi package for tk-driven planning + ticket implementation workflows.
+A reusable pi package for tf-driven planning + ticket implementation workflows.
 
 ## Includes
 
 - Prompt templates:
-  - `/tk-brainstorm`
-  - `/tk-plan`
-  - `/tk-plan-check`
-  - `/tk-plan-refine`
-  - `/tk-ticketize`
-  - `/tk-implement`
-- Bootstrap command extension: `/tk-bootstrap`
+  - `/tf-brainstorm`
+  - `/tf-plan`
+  - `/tf-plan-check`
+  - `/tf-plan-refine`
+  - `/tf-ticketize`
+  - `/tf-implement`
+- Bootstrap command extension: `/tf-bootstrap`
 - Subagent templates under `assets/agents/`:
   - context-builder, scout, context-merger, researcher, librarian, plan-fast, plan-deep, worker, reviewer, tester, fixer
-  - plan-gap-analyzer, plan-reviewer, documenter, refactorer, simplifier, tk-closer, ticketizer
+  - plan-gap-analyzer, plan-reviewer, documenter, refactorer, simplifier, tf-closer, ticketizer
 - Reusable chain presets under `assets/chains/`:
-  - `tk-brainstorm.chain.md`
-  - `tk-plan.chain.md`
-  - `tk-plan-thorough.chain.md`
-  - `tk-plan-check.chain.md`
-  - `tk-plan-refine.chain.md`
-  - `tk-ticketize.chain.md`
-  - `tk-path-a.chain.md`
-  - `tk-path-b.chain.md`
-  - `tk-path-c.chain.md`
+  - `tf-brainstorm.chain.md`
+  - `tf-plan.chain.md`
+  - `tf-plan-thorough.chain.md`
+  - `tf-plan-check.chain.md`
+  - `tf-plan-refine.chain.md`
+  - `tf-ticketize.chain.md`
+  - `tf-path-a.chain.md`
+  - `tf-path-b.chain.md`
+  - `tf-path-c.chain.md`
 
-Implementation presets include a final `tk-closer` step for commit + `tk add-note` + tk close/status gating.
-- Skill: `tk-workflow`
+Implementation presets include a final `tf-closer` step for commit + `tk add-note` + tk close/status gating.
+- Skill: `tf-workflow`
 
 ## Install
 
 ```bash
 # latest main
-pi install git:github.com/legout/pi-tk-flow
+pi install git:github.com/legout/pi-tf-flow
 
 # or pin a release tag
-pi install git:github.com/legout/pi-tk-flow@v0.2.3
+pi install git:github.com/legout/pi-tf-flow@v0.2.3
 ```
 
 ### pi-subagents prerequisite
 
-`pi-tk-flow` expects the `subagent`/`subagent_status` tools from `pi-subagents`, but does **not** load a bundled copy.
+`pi-tf-flow` expects the `subagent`/`subagent_status` tools from `pi-subagents`, but does **not** load a bundled copy.
 This avoids duplicate tool/command registration conflicts when `pi-subagents` is already installed globally.
 
 Install once (if missing):
@@ -52,7 +52,7 @@ pi install npm:pi-subagents
 
 ### pi-prompt-template-model extension (optional)
 
-The `pi-prompt-template-model` extension provides automatic model switching for tk commands based on authoritative mappings. When installed, commands automatically use optimized models without manual `--model` flags.
+The `pi-prompt-template-model` extension provides automatic model switching for tf commands based on authoritative mappings. When installed, commands automatically use optimized models without manual `--model` flags.
 
 **Install:**
 
@@ -73,13 +73,13 @@ pi install npm:pi-prompt-template-model
 
 | Command | Model | Thinking |
 |---------|-------|----------|
-| `/tk-bootstrap` | `minimax/m2.5` | `low` |
-| `/tk-brainstorm` | `glm-5` | `medium` |
-| `/tk-implement` | `glm-5` | `medium` |
-| `/tk-plan` | `glm-5` | `medium` |
-| `/tk-plan-check` | `glm-5` | `medium` |
-| `/tk-plan-refine` | `glm-5` | `medium` |
-| `/tk-ticketize` | `glm-5` | `medium` |
+| `/tf-bootstrap` | `minimax/m2.5` | `low` |
+| `/tf-brainstorm` | `glm-5` | `medium` |
+| `/tf-implement` | `glm-5` | `medium` |
+| `/tf-plan` | `glm-5` | `medium` |
+| `/tf-plan-check` | `glm-5` | `medium` |
+| `/tf-plan-refine` | `glm-5` | `medium` |
+| `/tf-ticketize` | `glm-5` | `medium` |
 
 > **Note:** This mapping table is the **canonical source** for prompt and documentation alignment. When updating model assignments, update this table first.
 
@@ -99,23 +99,23 @@ Commands continue to execute normally when the extension is not installed—no e
 
 ```bash
 # install/update user-level agents + chain presets (~/.pi/agent/agents)
-/tk-bootstrap --scope user
+/tf-bootstrap --scope user
 
 # install/update project-level agents + chain presets (.pi/agents)
-/tk-bootstrap --scope project
+/tf-bootstrap --scope project
 
 # also materialize prompts + skills to local directories
 # user scope: ~/.pi/agent/prompts + ~/.pi/agent/skills
-/tk-bootstrap --scope user --copy-all
+/tf-bootstrap --scope user --copy-all
 
 # project scope: .pi/prompts + .pi/skills
-/tk-bootstrap --scope project --copy-all
+/tf-bootstrap --scope project --copy-all
 
 # preview only
-/tk-bootstrap --scope user --copy-all --dry-run
+/tf-bootstrap --scope user --copy-all --dry-run
 
 # preserve local edits (never overwrite changed files)
-/tk-bootstrap --scope project --copy-all --no-overwrite
+/tf-bootstrap --scope project --copy-all --no-overwrite
 ```
 
 Flags:
@@ -134,34 +134,34 @@ Existing file behavior:
 
 ```bash
 # 0) Optional brainstorming brief
-/tk-brainstorm <topic>
-/tk-brainstorm <topic> --mode feature|refactor|simplify
+/tf-brainstorm <topic>
+/tf-brainstorm <topic> --mode feature|refactor|simplify
 # researcher/librarian are auto-routed by the command when needed (no research flag)
 
 # 1) Planning artifacts (PRD/spec/implementation plan)
-/tk-plan <topic>                          # fast mode (default)
-/tk-plan <topic> --thorough               # sequential synthesis mode
-/tk-plan <topic> --mode feature|refactor|simplify
-/tk-plan <topic> --from .tf/plans/<plan-dir>/00-design.md
+/tf-plan <topic>                          # fast mode (default)
+/tf-plan <topic> --thorough               # sequential synthesis mode
+/tf-plan <topic> --mode feature|refactor|simplify
+/tf-plan <topic> --from .tf/plans/<plan-dir>/00-design.md
 # plan/brainstorm auto-route researcher/librarian when needed and persist findings to .tf/knowledge/topics/<topic-slug>/
 
 # 2) Optional plan quality gate + refinement
-/tk-plan-check .tf/plans/<plan-dir>
-/tk-plan-check .tf/plans/<plan-dir>/03-implementation-plan.md --thorough
-/tk-plan-refine .tf/plans/<plan-dir>                  # applies refinements when needed (uses existing plan-check findings if present)
-/tk-plan-refine .tf/plans/<plan-dir> --thorough
+/tf-plan-check .tf/plans/<plan-dir>
+/tf-plan-check .tf/plans/<plan-dir>/03-implementation-plan.md --thorough
+/tf-plan-refine .tf/plans/<plan-dir>                  # applies refinements when needed (uses existing plan-check findings if present)
+/tf-plan-refine .tf/plans/<plan-dir> --thorough
 
 # 3) Ticket decomposition (default creates tickets)
-/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md
-/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run
+/tf-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md
+/tf-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run
 
 # 4) Implementation of a ticket (main agent chooses path)
-/tk-implement <ticket-id>                           # auto-select Path A/B/C
-/tk-implement <ticket-id> --async                   # background execution
-/tk-implement <ticket-id> --clarify                 # chain clarification TUI
-/tk-implement <ticket-id> --interactive             # supervised overlay (blocking)
-/tk-implement <ticket-id> --hands-free              # agent-monitored overlay
-/tk-implement <ticket-id> --dispatch                # background + notify
+/tf-implement <ticket-id>                           # auto-select Path A/B/C
+/tf-implement <ticket-id> --async                   # background execution
+/tf-implement <ticket-id> --clarify                 # chain clarification TUI
+/tf-implement <ticket-id> --interactive             # supervised overlay (blocking)
+/tf-implement <ticket-id> --hands-free              # agent-monitored overlay
+/tf-implement <ticket-id> --dispatch                # background + notify
 ```
 
 Flag behavior:
@@ -173,12 +173,12 @@ Flag behavior:
 - If `--async` and `--clarify` both passed, async wins (legacy behavior)
 - `--interactive` is incompatible with `--async` and `--clarify`
 - `--hands-free` and `--dispatch` can combine with `--clarify`
-- `tk-plan`, `tk-plan-check`, and `tk-plan-refine` support `--fast` (default) and `--thorough`.
-- `tk-ticketize` defaults to create mode. Use `--dry-run` to preview without creating tickets.
+- `tf-plan`, `tf-plan-check`, and `tf-plan-refine` support `--fast` (default) and `--thorough`.
+- `tf-ticketize` defaults to create mode. Use `--dry-run` to preview without creating tickets.
 
 ## Execution Modes
 
-`/tk-implement` supports multiple execution modes for different workflows:
+`/tf-implement` supports multiple execution modes for different workflows:
 
 | Mode | Flag | Behavior | Use When |
 |------|------|----------|----------|
@@ -217,7 +217,7 @@ Interactive sessions are tracked in `.subagent-runs/<ticket>/session.json`:
   "mode": "interactive|hands-free|dispatch",
   "sessionId": "calm-reef",
   "startedAt": "2026-03-04T12:34:56Z",
-  "command": "pi \"/tk-implement TICKET-123\"",
+  "command": "pi \"/tf-implement TICKET-123\"",
   "status": "pending|completed|failed"
 }
 ```
@@ -243,13 +243,13 @@ Interactive sessions are tracked in `.subagent-runs/<ticket>/session.json`:
 
 ## Scope behavior
 
-- If project bootstrap marker `.pi/agents/.tk-bootstrap.json` exists, tk prompts should use `agentScope: "project"`.
+- If project bootstrap marker `.pi/agents/.tf-bootstrap.json` exists, tk prompts should use `agentScope: "project"`.
 - Otherwise they should use `agentScope: "user"`.
 - Use `"both"` only when intentionally allowing project agents to override user agents.
 
 ## UI (Optional Terminal/Web Interface)
 
-pi-tk-flow includes an optional Textual-based TUI for browsing tickets and knowledge topics.
+pi-tf-flow includes an optional Textual-based TUI for browsing tickets and knowledge topics.
 
 ### Prerequisites
 
@@ -333,7 +333,7 @@ textual serve "python -m pi_tk_flow_ui" --host 0.0.0.0 --port 8000
 |-------|----------|
 | `Error: UI dependencies not installed` | Run `pip install -e './python[ui]'` |
 | `tk CLI not found` | Status defaults to "open"; install `tk` for live status |
-| `No tickets found` | Create a plan with `/tk-plan` first |
+| `No tickets found` | Create a plan with `/tf-plan` first |
 | `No topics found` | Add markdown files to `.tf/knowledge/topics/` |
 | Editor doesn't open | Set `$EDITOR` or `$PAGER` environment variable |
 | Colors look wrong | Ensure your terminal supports 256 colors |

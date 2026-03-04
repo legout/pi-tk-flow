@@ -27,14 +27,14 @@ Rules:
 - `DATE = <YYYY-MM-DD>`
 - `TOPIC_SLUG = kebab-case(topic)`
 - `PLAN_DIR = .tf/plans/${DATE}-${TOPIC_SLUG}`
-- `CHAIN_DIR = .subagent-runs/tk-brainstorm/${TOPIC_SLUG}`
+- `CHAIN_DIR = .subagent-runs/tf-brainstorm/${TOPIC_SLUG}`
 - `TOPIC_SEED = ${CHAIN_DIR}/topic-seed.json`
 - `KNOWLEDGE_TOPIC_DIR = .tf/knowledge/topics/${TOPIC_SLUG}`
 
 Ensure directories exist:
 - `.tf/plans`
 - `${PLAN_DIR}`
-- `.subagent-runs/tk-brainstorm`
+- `.subagent-runs/tf-brainstorm`
 - `${CHAIN_DIR}`
 - `.tf/knowledge/topics`
 - `${KNOWLEDGE_TOPIC_DIR}`
@@ -70,7 +70,7 @@ If `--from` is not provided:
 - Use existing agents only.
 - Never call subagent management actions create/update/delete.
 - Determine `AGENT_SCOPE`:
-  - if `.pi/agents/.tk-bootstrap.json` exists -> `project`
+  - if `.pi/agents/.tf-bootstrap.json` exists -> `project`
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
@@ -258,5 +258,5 @@ When synchronous run completes:
 3. If used, list persisted knowledge files under `<KNOWLEDGE_TOPIC_DIR>`.
 4. Summarize recommendation + key trade-offs in 5-8 bullets.
 5. Recommend next step:
-   - `/tk-plan <topic> --mode <mode>`
+   - `/tf-plan <topic> --mode <mode>`
    - optionally with `--from <PLAN_DIR>/00-design.md`

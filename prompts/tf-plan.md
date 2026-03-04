@@ -31,14 +31,14 @@ Rules:
 - `DATE = <YYYY-MM-DD>`
 - `TOPIC_SLUG = kebab-case(topic)`
 - `PLAN_DIR = .tf/plans/${DATE}-${TOPIC_SLUG}`
-- `CHAIN_DIR = .subagent-runs/tk-plan/${TOPIC_SLUG}`
+- `CHAIN_DIR = .subagent-runs/tf-plan/${TOPIC_SLUG}`
 - `TOPIC_SEED = ${CHAIN_DIR}/topic-seed.json`
 - `KNOWLEDGE_TOPIC_DIR = .tf/knowledge/topics/${TOPIC_SLUG}`
 
 Ensure directories exist:
 - `.tf/plans`
 - `${PLAN_DIR}`
-- `.subagent-runs/tk-plan`
+- `.subagent-runs/tf-plan`
 - `${CHAIN_DIR}`
 - `.tf/knowledge/topics`
 - `${KNOWLEDGE_TOPIC_DIR}`
@@ -74,7 +74,7 @@ If `--from` is not provided:
 - Use existing agents only.
 - Never call subagent management actions create/update/delete.
 - Determine `AGENT_SCOPE`:
-  - if `.pi/agents/.tk-bootstrap.json` exists -> `project`
+  - if `.pi/agents/.tf-bootstrap.json` exists -> `project`
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
@@ -329,5 +329,5 @@ When synchronous run completes:
 4. Summarize key decisions in 5-10 bullets.
 5. Note mode used (fast/thorough).
 6. Recommend next step:
-   - `/tk-plan-check <PLAN_DIR>` (recommended quality gate)
-   - then `/tk-ticketize <PLAN_DIR>/03-implementation-plan.md`
+   - `/tf-plan-check <PLAN_DIR>` (recommended quality gate)
+   - then `/tf-ticketize <PLAN_DIR>/03-implementation-plan.md`

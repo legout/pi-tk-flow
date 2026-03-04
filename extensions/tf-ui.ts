@@ -1,5 +1,5 @@
 /**
- * Extension command for launching the pi-tk-flow TUI.
+ * Extension command for launching the pi-tf-flow TUI.
  *
  * Provides /tf ui for terminal mode and /tf ui --web for web mode.
  */
@@ -67,7 +67,7 @@ function findPythonPackage(cwd: string): string | null {
   const candidates = [
     resolve(cwd, "python"),
     resolve(cwd, "..", "python"),
-    resolve(cwd, "pi-tk-flow", "python"),
+    resolve(cwd, "pi-tf-flow", "python"),
   ];
 
   for (const path of candidates) {
