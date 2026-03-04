@@ -5,6 +5,178 @@ import pytest
 from pi_tk_flow_ui.topic_scanner import Topic, TopicScanner, TopicScanError
 
 
+class TestTopicScannerWithFixtures:
+    """Test TopicScanner using deterministic sample fixtures."""
+    
+    def test_scan_finds_all_fixture_topics(self, sample_project_tf_dir):
+        """Test scanning finds all topics from sample fixture."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        topics = scanner.scan()
+        
+        # Should find 4 topics
+        assert len(topics) == 4
+        
+        # Check IDs are present
+        ids = {t.id for t in topics}
+        assert "seed-sample" in ids
+        assert "plan-sample" in ids
+        assert "spike-sample" in ids
+        assert "baseline-testing" in ids
+    
+    def test_fixture_topic_types(self, sample_project_tf_dir, fixture_topic_ids):
+        """Test topic type classification from fixtures."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        topics = scanner.scan()
+        
+        by_id = {t.id: t for t in topics}
+        
+        # Verify all expected types
+        for topic_id, expected in fixture_topic_ids.items():
+            assert topic_id in by_id, f"Topic {topic_id} not found"
+            assert by_id[topic_id].topic_type == expected["type"]
+    
+    def test_fixture_topic_titles(self, sample_project_tf_dir, fixture_topic_ids):
+        """Test title extraction from fixture topics."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        topics = scanner.scan()
+        
+        by_id = {t.id: t for t in topics}
+        
+        for topic_id, expected in fixture_topic_ids.items():
+            assert by_id[topic_id].title == expected["title"]
+    
+    def test_fixture_topic_keywords(self, sample_project_tf_dir, fixture_topic_ids):
+        """Test keyword extraction from frontmatter in fixtures."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        topics = scanner.scan()
+        
+        by_id = {t.id: t for t in topics}
+        
+        for topic_id, expected in fixture_topic_ids.items():
+            assert by_id[topic_id].keywords == expected["keywords"]
+    
+    def test_fixture_group_by_type(self, sample_project_tf_dir):
+        """Test grouping topics by type from fixtures."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        topics = scanner.scan()
+        groups = scanner.group_by_type(topics)
+        
+        # Should have all 5 type groups
+        assert "plan" in groups
+        assert "spike" in groups
+        assert "seed" in groups
+        assert "baseline" in groups
+        assert "other" in groups
+        
+        # Verify fixture distribution
+        assert len(groups["plan"]) == 1
+        assert len(groups["spike"]) == 1
+        assert len(groups["seed"]) == 1
+        assert len(groups["baseline"]) == 1
+        assert len(groups["other"]) == 0  # No 'other' type in fixtures
+        
+        # Check specific IDs
+        assert groups["plan"][0].id == "plan-sample"
+        assert groups["spike"][0].id == "spike-sample"
+        assert groups["seed"][0].id == "seed-sample"
+        assert groups["baseline"][0].id == "baseline-testing"
+    
+    def test_fixture_sorting_by_type(self, sample_project_tf_dir):
+        """Test topics are sorted by type priority then title."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        topics = scanner.scan()
+        
+        # Type priority: plan (0), spike (1), seed (2), baseline (3), other (4)
+        # So order should be: plan, spike, seed, baseline
+        types = [t.topic_type for t in topics]
+        
+        # Find positions
+        plan_idx = types.index("plan") if "plan" in types else -1
+        spike_idx = types.index("spike") if "spike" in types else -1
+        seed_idx = types.index("seed") if "seed" in types else -1
+        baseline_idx = types.index("baseline") if "baseline" in types else -1
+        
+        # Verify ordering
+        assert plan_idx < spike_idx < seed_idx < baseline_idx
+    
+    def test_fixture_get_by_id(self, sample_project_tf_dir):
+        """Test getting topic by ID from fixtures."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        
+        topic = scanner.get_by_id("plan-sample")
+        assert topic is not None
+        assert topic.title == "Plan Topic - Implementation Workflow"
+        
+        missing = scanner.get_by_id("nonexistent")
+        assert missing is None
+    
+    def test_fixture_search_by_id(self, sample_project_tf_dir):
+        """Test searching topics by ID from fixtures."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        
+        results = scanner.search("spike")
+        ids = {t.id for t in results}
+        assert "spike-sample" in ids
+    
+    def test_fixture_search_by_title(self, sample_project_tf_dir):
+        """Test searching topics by title from fixtures."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        
+        results = scanner.search("Scaffolding")
+        assert len(results) == 1
+        assert results[0].id == "seed-sample"
+    
+    def test_fixture_search_by_keyword(self, sample_project_tf_dir):
+        """Test searching topics by keyword from fixtures."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        
+        results = scanner.search("pytest")
+        assert len(results) == 1
+        assert results[0].id == "baseline-testing"
+    
+    def test_fixture_search_case_insensitive(self, sample_project_tf_dir):
+        """Test search is case insensitive on fixtures."""
+        from pi_tk_flow_ui.topic_scanner import TopicScanner
+        
+        knowledge_dir = sample_project_tf_dir / "knowledge"
+        scanner = TopicScanner(knowledge_dir)
+        
+        results_lower = scanner.search("testing")
+        results_upper = scanner.search("TESTING")
+        
+        assert len(results_lower) == len(results_upper)
+
+
 class TestTopic:
     """Test Topic dataclass."""
     

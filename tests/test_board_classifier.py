@@ -11,6 +11,216 @@ from pi_tk_flow_ui.board_classifier import (
 from pi_tk_flow_ui.ticket_loader import Ticket
 
 
+class TestBoardClassifierWithFixtures:
+    """Test BoardClassifier using deterministic sample fixtures."""
+    
+    def test_classify_fixture_tickets_precedence_rules(self, sample_project_tf_dir):
+        """Test precedence rules: CLOSED > BLOCKED > IN_PROGRESS > READY.
+        
+        Uses real tickets loaded from fixtures to verify classification.
+        """
+        from pi_tk_flow_ui.ticket_loader import YamlTicketLoader
+        
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        # Manually set statuses for deterministic testing
+        ticket_map = {t.id: t for t in tickets}
+        
+        # S1: open, no deps -> READY
+        if "S1" in ticket_map:
+            ticket_map["S1"].status = "open"
+            ticket_map["S1"].deps = []
+        
+        # S2: open, depends on S1 -> BLOCKED (S1 is open)
+        if "S2" in ticket_map:
+            ticket_map["S2"].status = "open"
+            ticket_map["S2"].deps = ["S1"]
+        
+        # S3: in_progress, no deps -> IN_PROGRESS
+        if "S3" in ticket_map:
+            ticket_map["S3"].status = "in_progress"
+            ticket_map["S3"].deps = []
+        
+        # S4: closed -> CLOSED (takes precedence over everything)
+        if "S4" in ticket_map:
+            ticket_map["S4"].status = "closed"
+            ticket_map["S4"].deps = []
+        
+        # S5: open, depends on S1 and S2 -> BLOCKED (both open deps)
+        if "S5" in ticket_map:
+            ticket_map["S5"].status = "open"
+            ticket_map["S5"].deps = ["S1", "S2"]
+        
+        classifier = BoardClassifier(tickets)
+        view = classifier.classify()
+        
+        classified_map = {ct.id: ct for ct in view.tickets}
+        
+        # Verify precedence rules
+        if "S1" in classified_map:
+            assert classified_map["S1"].column == BoardColumn.READY, \
+                "S1 should be READY (open, no deps)"
+        
+        if "S2" in classified_map:
+            assert classified_map["S2"].column == BoardColumn.BLOCKED, \
+                "S2 should be BLOCKED (depends on open S1)"
+            assert "S1" in classified_map["S2"].blocking_deps
+        
+        if "S3" in classified_map:
+            assert classified_map["S3"].column == BoardColumn.IN_PROGRESS, \
+                "S3 should be IN_PROGRESS (in_progress, no deps)"
+        
+        if "S4" in classified_map:
+            assert classified_map["S4"].column == BoardColumn.CLOSED, \
+                "S4 should be CLOSED (closed status)"
+        
+        if "S5" in classified_map:
+            assert classified_map["S5"].column == BoardColumn.BLOCKED, \
+                "S5 should be BLOCKED (depends on S1 and S2)"
+            assert "S1" in classified_map["S5"].blocking_deps
+            assert "S2" in classified_map["S5"].blocking_deps
+    
+    def test_fixture_closed_ticket_with_deps_stays_closed(self, sample_project_tf_dir):
+        """Test CLOSED precedence: even with open deps, closed tickets stay CLOSED."""
+        from pi_tk_flow_ui.ticket_loader import YamlTicketLoader
+        
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        ticket_map = {t.id: t for t in tickets}
+        
+        # Create scenario: S4 is closed but depends on S1 which is open
+        if "S4" in ticket_map and "S1" in ticket_map:
+            ticket_map["S4"].status = "closed"
+            ticket_map["S4"].deps = ["S1"]
+            ticket_map["S1"].status = "open"
+            
+            classifier = BoardClassifier(tickets)
+            view = classifier.classify()
+            
+            s4_classified = next(ct for ct in view.tickets if ct.id == "S4")
+            
+            # CLOSED takes precedence over BLOCKED
+            assert s4_classified.column == BoardColumn.CLOSED
+            assert s4_classified.blocking_deps == []  # No blockers needed for closed
+    
+    def test_fixture_unknown_dependency_treated_as_blocker(self, sample_project_tf_dir):
+        """Test that unknown dependencies are treated as blockers."""
+        from pi_tk_flow_ui.ticket_loader import YamlTicketLoader
+        
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        # Add a dependency on a non-existent ticket
+        ticket_map = {t.id: t for t in tickets}
+        if "S1" in ticket_map:
+            ticket_map["S1"].status = "open"
+            ticket_map["S1"].deps = ["NONEXISTENT-TICKET"]
+            
+            classifier = BoardClassifier(tickets)
+            view = classifier.classify()
+            
+            s1_classified = next(ct for ct in view.tickets if ct.id == "S1")
+            
+            assert s1_classified.column == BoardColumn.BLOCKED
+            assert "NONEXISTENT-TICKET" in s1_classified.blocking_deps
+    
+    def test_fixture_mixed_deps_some_blocking(self, sample_project_tf_dir):
+        """Test with mix of blocking (open) and non-blocking (closed) deps."""
+        from pi_tk_flow_ui.ticket_loader import YamlTicketLoader
+        
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        ticket_map = {t.id: t for t in tickets}
+        
+        # Set up: S1 closed, S2 open
+        if "S1" in ticket_map:
+            ticket_map["S1"].status = "closed"
+        if "S2" in ticket_map:
+            ticket_map["S2"].status = "open"
+        
+        # Create ticket depending on both S1 (closed) and S2 (open)
+        if "S1" in ticket_map and "S2" in ticket_map:
+            # Use S3 as the test ticket
+            ticket_map["S3"].status = "open"
+            ticket_map["S3"].deps = ["S1", "S2"]
+            
+            classifier = BoardClassifier(tickets)
+            view = classifier.classify()
+            
+            s3_classified = next(ct for ct in view.tickets if ct.id == "S3")
+            
+            assert s3_classified.column == BoardColumn.BLOCKED
+            assert "S2" in s3_classified.blocking_deps  # S2 is open, blocks
+            assert "S1" not in s3_classified.blocking_deps  # S1 is closed, doesn't block
+    
+    def test_fixture_in_progress_with_blocker(self, sample_project_tf_dir):
+        """Test that in_progress tickets with blockers go to BLOCKED."""
+        from pi_tk_flow_ui.ticket_loader import YamlTicketLoader
+        
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        ticket_map = {t.id: t for t in tickets}
+        
+        # Set up: S1 open, S2 in_progress but depends on S1
+        if "S1" in ticket_map and "S2" in ticket_map:
+            ticket_map["S1"].status = "open"
+            ticket_map["S2"].status = "in_progress"
+            ticket_map["S2"].deps = ["S1"]
+            
+            classifier = BoardClassifier(tickets)
+            view = classifier.classify()
+            
+            s2_classified = next(ct for ct in view.tickets if ct.id == "S2")
+            
+            # BLOCKED takes precedence over IN_PROGRESS
+            assert s2_classified.column == BoardColumn.BLOCKED
+    
+    def test_fixture_board_view_counts(self, sample_project_tf_dir):
+        """Test BoardView counts with fixture tickets."""
+        from pi_tk_flow_ui.ticket_loader import YamlTicketLoader
+        
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        # Configure specific states
+        ticket_map = {t.id: t for t in tickets}
+        
+        # S1: READY
+        if "S1" in ticket_map:
+            ticket_map["S1"].status = "open"
+            ticket_map["S1"].deps = []
+        
+        # S2: BLOCKED (depends on S1)
+        if "S2" in ticket_map:
+            ticket_map["S2"].status = "open"
+            ticket_map["S2"].deps = ["S1"]
+        
+        # S3: IN_PROGRESS
+        if "S3" in ticket_map:
+            ticket_map["S3"].status = "in_progress"
+            ticket_map["S3"].deps = []
+        
+        # S4: CLOSED
+        if "S4" in ticket_map:
+            ticket_map["S4"].status = "closed"
+            ticket_map["S4"].deps = []
+        
+        classifier = BoardClassifier(tickets)
+        view = classifier.classify()
+        
+        counts = view.counts
+        
+        # Verify counts match expected distribution
+        assert counts["ready"] >= 1  # At least S1
+        assert counts["blocked"] >= 1  # At least S2
+        assert counts["in_progress"] >= 1  # At least S3
+        assert counts["closed"] >= 1  # At least S4
+
+
 class TestBoardColumn:
     """Test BoardColumn enum."""
     

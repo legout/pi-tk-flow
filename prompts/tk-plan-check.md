@@ -1,6 +1,7 @@
 ---
 description: Run a quality gate on planning artifacts and produce GO/NO-GO ticketization guidance
-model: claude-haiku-4-5
+model: glm-5
+thinking: medium
 ---
 
 Check planning quality from `$@`.

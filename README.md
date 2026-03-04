@@ -13,7 +13,7 @@ A reusable pi package for tk-driven planning + ticket implementation workflows.
   - `/tk-implement`
 - Bootstrap command extension: `/tk-bootstrap`
 - Subagent templates under `assets/agents/`:
-  - context-builder, scout, context-merger, researcher, librarian, planner, planner-b, planner-c, worker, reviewer, tester, fixer
+  - context-builder, scout, context-merger, researcher, librarian, plan-fast, plan-deep, worker, reviewer, tester, fixer
   - plan-gap-analyzer, plan-reviewer, documenter, refactorer, simplifier, tk-closer, ticketizer
 - Reusable chain presets under `assets/chains/`:
   - `tk-brainstorm.chain.md`
@@ -71,15 +71,15 @@ pi install npm:pi-prompt-template-model
 
 **Authoritative Command→Model Mapping:**
 
-| Command | Model(s) |
-|---------|----------|
-| `/tk-bootstrap` | `claude-haiku-4-5` |
-| `/tk-brainstorm` | `claude-sonnet-4-20250514` |
-| `/tk-implement` | `claude-haiku-4-5`, `claude-sonnet-4-20250514` |
-| `/tk-plan` | `claude-sonnet-4-20250514` |
-| `/tk-plan-check` | `claude-haiku-4-5` |
-| `/tk-plan-refine` | `claude-sonnet-4-20250514` |
-| `/tk-ticketize` | `claude-haiku-4-5` |
+| Command | Model | Thinking |
+|---------|-------|----------|
+| `/tk-bootstrap` | `minimax/m2.5` | `low` |
+| `/tk-brainstorm` | `glm-5` | `medium` |
+| `/tk-implement` | `glm-5` | `medium` |
+| `/tk-plan` | `glm-5` | `medium` |
+| `/tk-plan-check` | `glm-5` | `medium` |
+| `/tk-plan-refine` | `glm-5` | `medium` |
+| `/tk-ticketize` | `glm-5` | `medium` |
 
 > **Note:** This mapping table is the **canonical source** for prompt and documentation alignment. When updating model assignments, update this table first.
 

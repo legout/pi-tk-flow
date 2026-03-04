@@ -219,9 +219,9 @@ Test suite validating flag parsing, mode routing, session lifecycle, and legacy 
 | Test ID | Command | Path | Expected Chain Structure | Status |
 |---------|---------|------|-------------------------|--------|
 | TD-4.2.1 | `/tk-implement MINIMAL-TICKET` | A (Minimal) | worker→reviewer→fixer→reviewer(re-check)→tk-closer | ✅ |
-| TD-4.2.2 | `/tk-implement STANDARD-TICKET` | B (Standard) | planner-b→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ |
-| TD-4.2.3 | `/tk-implement COMPLEX-TICKET` | C (Deep, no research) | planner-c→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ |
-| TD-4.2.4 | `/tk-implement RESEARCH-TICKET` | C (Deep, with research) | (research∥librarian)→planner-c→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ |
+| TD-4.2.2 | `/tk-implement STANDARD-TICKET` | B (Standard) | plan-fast→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ |
+| TD-4.2.3 | `/tk-implement COMPLEX-TICKET` | C (Deep, no research) | plan-deep→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ |
+| TD-4.2.4 | `/tk-implement RESEARCH-TICKET` | C (Deep, with research) | (research∥librarian)→plan-deep→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ |
 
 ### TD-4.3 Subagent Parameter Preservation
 

@@ -943,9 +943,9 @@ echo "test" > .subagent-runs/FAIL-TICKET/anchor-context.md
 | Test ID | Command | Path | Chain Structure | Result |
 |---------|---------|------|-----------------|--------|
 | TD-4.2.1 | `/tk-implement MINIMAL-TICKET` | A (Minimal) | worker→reviewer→fixer→reviewer(re-check)→tk-closer | ✅ PASS |
-| TD-4.2.2 | `/tk-implement STANDARD-TICKET` | B (Standard) | planner-b→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
-| TD-4.2.3 | `/tk-implement COMPLEX-TICKET` | C (Deep, no research) | planner-c→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
-| TD-4.2.4 | `/tk-implement RESEARCH-TICKET` | C (Deep, with research) | (research∥librarian)→planner-c→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
+| TD-4.2.2 | `/tk-implement STANDARD-TICKET` | B (Standard) | plan-fast→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
+| TD-4.2.3 | `/tk-implement COMPLEX-TICKET` | C (Deep, no research) | plan-deep→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
+| TD-4.2.4 | `/tk-implement RESEARCH-TICKET` | C (Deep, with research) | (research∥librarian)→plan-deep→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
 
 **Evidence:** Chain structures match pre-interactive era definitions in `prompts/tk-implement.md` Sections 3-4.
 

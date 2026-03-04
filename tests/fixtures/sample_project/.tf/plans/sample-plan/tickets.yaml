@@ -4,13 +4,14 @@ epic:
   description: |
     A sample epic for testing the TUI implementation.
     This epic includes multiple slices to test various scenarios.
-  tags: [testing, ui]
+  tags: [testing, ui, epic-tag]
+  assignee: "epic-owner"
+  external_ref: "github.com/org/epic/1"
 
 slices:
   - key: S1
     title: "Ready slice - no dependencies"
     type: feature
-    afk_hitl: AFK
     priority: 1
     tags: [feature, ui, foundation]
     description: |
@@ -21,7 +22,6 @@ slices:
   - key: S2
     title: "Blocked slice - depends on S1"
     type: feature
-    afk_hitl: AFK
     priority: 2
     tags: [feature, ui, dependent]
     description: |
@@ -32,7 +32,6 @@ slices:
   - key: S3
     title: "In Progress slice"
     type: chore
-    afk_hitl: AFK
     priority: 1
     tags: [chore, ui]
     assignee: "testuser"
@@ -43,7 +42,6 @@ slices:
   - key: S4
     title: "Closed slice"
     type: feature
-    afk_hitl: AFK
     priority: 3
     tags: [feature, ui]
     external_ref: "github.com/org/repo/issues/42"
@@ -56,6 +54,25 @@ slices:
     type: feature
     priority: 2
     tags: [feature, complex]
+    assignee: "developer2"
     description: |
       This slice has multiple dependencies and tests dependency resolution.
     blocked_by: [S1, S2]
+
+  - key: S6
+    title: "String dependency test"
+    type: bug
+    priority: 1
+    tags: [bug, string-test]
+    description: |
+      Tests blocked_by as string instead of list.
+    blocked_by: "S1"
+
+  - key: S7
+    title: "String tag test"
+    type: docs
+    priority: 3
+    tags: "single-tag"
+    description: |
+      Tests tags as string instead of list.
+    blocked_by: []

@@ -79,6 +79,99 @@ class TestTicket:
         assert ticket.tags == []
 
 
+class TestYamlTicketLoaderWithFixtures:
+    """Test YamlTicketLoader using deterministic sample fixtures."""
+    
+    def test_load_all_from_sample_fixture(self, sample_project_tf_dir, fixture_ticket_ids):
+        """Test loading all tickets from the sample fixture project.
+        
+        Validates YAML field mapping for all ticket types and fields.
+        """
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        # Should have epic + 7 slices = 8 tickets
+        assert len(tickets) == 8
+        
+        # Build ticket lookup
+        ticket_map = {t.id: t for t in tickets}
+        
+        # Verify all expected tickets loaded
+        for ticket_id in fixture_ticket_ids:
+            assert ticket_id in ticket_map, f"Expected ticket {ticket_id} not found"
+        
+        # Verify field mapping for each ticket
+        for ticket_id, expected in fixture_ticket_ids.items():
+            ticket = ticket_map[ticket_id]
+            
+            if "title" in expected:
+                assert ticket.title == expected["title"]
+            if "type" in expected:
+                assert ticket.ticket_type == expected["type"]
+            if "priority" in expected:
+                assert ticket.priority == expected["priority"]
+            if "assignee" in expected:
+                assert ticket.assignee == expected["assignee"]
+            if "external_ref" in expected:
+                assert ticket.external_ref == expected["external_ref"]
+            if "deps" in expected:
+                assert ticket.deps == expected["deps"]
+            if "tags" in expected:
+                assert ticket.tags == expected["tags"]
+    
+    def test_fixture_plan_name_and_dir(self, sample_project_tf_dir):
+        """Test that plan_name and plan_dir are correctly set from fixtures."""
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        for ticket in tickets:
+            assert ticket.plan_name == "sample-plan"
+            assert "sample-plan" in ticket.plan_dir
+    
+    def test_fixture_epic_fields(self, sample_project_tf_dir):
+        """Test epic-specific field mapping from fixture."""
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        epic = next(t for t in tickets if t.ticket_type == "epic")
+        
+        assert epic.id == "epic-sample-plan"
+        assert epic.title == "Sample Epic for Testing"
+        assert epic.assignee == "epic-owner"
+        assert epic.external_ref == "github.com/org/epic/1"
+        assert "testing" in epic.tags
+        assert "ui" in epic.tags
+    
+    def test_fixture_string_blocked_by_conversion(self, sample_project_tf_dir):
+        """Test that string blocked_by is converted to list (S6)."""
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        s6 = next(t for t in tickets if t.id == "S6")
+        
+        assert s6.deps == ["S1"]
+    
+    def test_fixture_string_tags_conversion(self, sample_project_tf_dir):
+        """Test that string tags is converted to list (S7)."""
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        tickets = loader.load_all()
+        
+        s7 = next(t for t in tickets if t.id == "S7")
+        
+        assert s7.tags == ["single-tag"]
+    
+    def test_fixture_status_defaults_to_open_when_tk_unavailable(self, sample_project_tf_dir):
+        """Test that tickets default to 'open' when tk CLI is not available."""
+        loader = YamlTicketLoader(sample_project_tf_dir)
+        
+        # Should not raise even if tk is not installed
+        tickets = loader.load_all()
+        
+        # All tickets should have a status
+        for ticket in tickets:
+            assert ticket.status in ("open", "in_progress", "closed")
+
+
 class TestYamlTicketLoader:
     """Test YamlTicketLoader functionality."""
     

@@ -78,14 +78,14 @@ Some prompts specify multiple models (e.g., `model: claude-haiku-4-5, claude-son
 
 ## Canonical Command→Model Mapping
 
-| Command | Model(s) |
-|---------|----------|
-| `/tk-bootstrap` | `claude-haiku-4-5` |
-| `/tk-brainstorm` | `claude-sonnet-4-20250514` |
-| `/tk-implement` | `claude-haiku-4-5`, `claude-sonnet-4-20250514` |
-| `/tk-plan` | `claude-sonnet-4-20250514` |
-| `/tk-plan-check` | `claude-haiku-4-5` |
-| `/tk-plan-refine` | `claude-sonnet-4-20250514` |
-| `/tk-ticketize` | `claude-haiku-4-5` |
+| Command | Model | Thinking |
+|---------|-------|----------|
+| `/tk-bootstrap` | `minimax/m2.5` | `low` |
+| `/tk-brainstorm` | `glm-5` | `medium` |
+| `/tk-implement` | `glm-5` | `medium` |
+| `/tk-plan` | `glm-5` | `medium` |
+| `/tk-plan-check` | `glm-5` | `medium` |
+| `/tk-plan-refine` | `glm-5` | `medium` |
+| `/tk-ticketize` | `glm-5` | `medium` |
 
 > **Note**: This mapping is the authoritative source. When updating model assignments, update the README.md table first.

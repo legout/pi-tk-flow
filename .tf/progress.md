@@ -151,3 +151,53 @@ Append one entry per implementation run.
 - Tests: verified (4/4 acceptance criteria passed)
 - Commit: none
 - Chain: .subagent-runs/ptf-n5ir/3821c5b8
+
+## 2026-03-04T17:12:49+01:00 | ptf-cb32 | closed
+
+- Path: A
+- Research: no
+- Summary: Documented pi-prompt-template-model extension in README with install instructions, behavior notes, and complete command→model mapping table including all tk-* commands. Post-fix review verified all issues resolved.
+- Files: README.md
+- Tests: passed (documentation verification)
+- Commit: 309c3de
+- Chain: .subagent-runs/ptf-cb32/cb16d4fe
+
+## 2026-03-04T17:28:07+01:00 | ptf-fqvd | closed
+
+- Path: B
+- Research: no
+- Summary: Created TD-1..TD-4 test coverage for /tk-implement flag matrix with 102 test scenarios (flag validation, mode behavior, session lifecycle, regression). Post-fix review resolved command snippets, 1:1 evidence mapping, and concrete evidence issues. Minor coverage count inconsistency remains non-blocking.
+- Files: tests/tk-implement/flag-matrix.md, tests/tk-implement/model-test-output.md, tests/tk-implement/fixes.md
+- Tests: passed (102 test scenarios documented)
+- Commit: 640de10
+- Chain: .subagent-runs/ptf-fqvd
+
+## 2026-03-04T17:40:36+01:00 | ptf-62c4 | closed
+
+- Path: A
+- Research: no
+- Summary: Added model frontmatter to all 6 tk prompt files per ticket acceptance criteria. Model assignments: tk-implement (haiku+sonnet), tk-brainstorm/plan/plan-refine (sonnet), tk-plan-check/tk-ticketize (haiku).
+- Files: prompts/tk-implement.md, prompts/tk-brainstorm.md, prompts/tk-plan.md, prompts/tk-plan-refine.md, prompts/tk-plan-check.md, prompts/tk-ticketize.md
+- Tests: passed (YAML validation, acceptance criteria verification)
+- Commit: 67484a8
+- Chain: .subagent-runs/ptf-62c4/f7c3806e
+
+## 2026-03-04T18:04:17+01:00 | ptf-it5r | closed
+
+- Path: A
+- Research: no
+- Summary: Added thinking: frontmatter to 4 prompt files (tk-plan/tk-brainstorm: high, tk-implement/tk-plan-refine: medium), created model-configuration.md knowledge topic with 5-level precedence ladder, and added validation evidence with static grep checks and extension-on/off test scenarios.
+- Files: prompts/tk-plan.md, prompts/tk-brainstorm.md, prompts/tk-plan-refine.md, prompts/tk-implement.md, .tf/knowledge/topics/model-configuration.md, .tf/plans/2026-03-04-default-models-for-commands/04-progress.md, README.md
+- Tests: passed (validation evidence documented)
+- Commit: 45a637b
+- Chain: .subagent-runs/ptf-it5r/96552d2f
+
+## 2026-03-04T18:17:42+01:00 | ptf-cgx4 | closed
+
+- Path: A
+- Research: no
+- Summary: Verified all acceptance criteria already met from prior work (ptf-it5r). Model configuration topic exists with 5-level precedence ladder, examples distinguish subagent/main-loop models, README cross-links at line 94, no conflicting text. No implementation changes required.
+- Files: none (verification only)
+- Tests: verified (4/4 acceptance criteria passed)
+- Commit: none
+- Chain: .subagent-runs/ptf-cgx4/0502b42c

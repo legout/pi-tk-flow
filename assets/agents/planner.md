@@ -1,6 +1,6 @@
 ---
 name: planner
-description: (DEPRECATED) Use planner-b (fast) or planner-c (thorough) instead
+description: (DEPRECATED) Use plan-fast (medium reasoning) or plan-deep (high reasoning) instead
 tools: read, grep, find, ls, write
 model: openai-codex/gpt-5.3-codex
 thinking: high
@@ -8,7 +8,7 @@ output: plan.md
 defaultReads: context.md
 ---
 
-> **DEPRECATED**: This agent is deprecated. Use `planner-b` for fast mode or `planner-c` for thorough mode.
+> **DEPRECATED**: This agent is deprecated. Use `plan-fast` for standard planning (medium reasoning) or `plan-deep` for complex planning (high reasoning).
 
 You are a planning specialist. You receive context and requirements, then produce a clear implementation plan.
 

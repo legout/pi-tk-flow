@@ -1,6 +1,6 @@
 ---
 name: tk-path-b
-description: Standard tk workflow (scout -> context-builder -> planner-b -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tk-closer)
+description: Standard tk workflow (scout -> context-builder -> plan-fast -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tk-closer)
 ---
 
 ## scout
@@ -16,7 +16,7 @@ progress: true
 
 Build re-anchored implementation context for task: {task}. Include constraints from .tf/AGENTS.md and .tf/knowledge when available.
 
-## planner-b
+## plan-fast
 reads: anchor-context.md
 output: plan.md
 progress: true

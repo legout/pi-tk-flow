@@ -37,3 +37,13 @@ Avoid ticket-specific trivia and duplicates.
 - **When to apply:** When implementing file opening with user-configurable PAGER/EDITOR environment variables
 - **Lesson:** Never use `os.system(cmd)` with shell-constructed command strings from environment variables. Instead, use `shlex.split()` to safely parse editor/pager commands (which may include flags like "code -w"), `shutil.which()` to find executables without shell, and `subprocess.run([...], shell=False)` to execute without shell interpolation. This prevents shell injection when file paths contain special characters.
 - **Source tickets:** ptf-bv4b (2026-03-04)
+
+### Single Source of Truth for Command→Model Mappings
+- **When to apply:** When implementing prompt template extensions that map commands to specific models
+- **Lesson:** Maintain a single authoritative command→model mapping table in documentation (README.md) and reference it from all prompts and extension configs. This prevents drift between prompts, documentation, and extension behavior. When adding new commands, always update the canonical table first.
+- **Source tickets:** ptf-cb32 (2026-03-04)
+
+### Extension Behavior Documentation Pattern
+- **When to apply:** When documenting optional pi extensions that modify command behavior
+- **Lesson:** Document extension behavior with four key aspects: (1) Switch - what happens when command is invoked, (2) Fallback - what happens when command has no mapping, (3) Restore - what happens after command completes, (4) No-extension - what happens when extension is not installed. This provides clear expectations for users and implementers.
+- **Source tickets:** ptf-cb32 (2026-03-04)

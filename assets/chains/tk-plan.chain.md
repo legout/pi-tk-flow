@@ -44,7 +44,7 @@ progress: true
 
 Create a canonical design brief for task: {task}. Include chosen architecture, component contracts, key flows, risks, and explicit decisions.
 
-## planner-b
+## plan-fast
 reads: anchor-context.md, prd-draft.md, spec-draft.md, design-draft.md
 output: plan-draft.md
 progress: true

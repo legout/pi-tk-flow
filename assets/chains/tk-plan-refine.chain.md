@@ -1,9 +1,9 @@
 ---
 name: tk-plan-refine
-description: Refine plan from quality findings (planner-b -> documenter). Run plan-check beforehand to generate gaps/review.
+description: Refine plan from quality findings (plan-fast -> documenter). Run plan-check beforehand to generate gaps/review.
 ---
 
-## planner-b
+## plan-fast
 reads: plan-gaps.md, plan-review.md
 output: plan-refined.md
 progress: true
