@@ -3,7 +3,7 @@ name: refactorer
 description: Restructures code without changing external behavior. Improves code organization, naming, and structure while preserving functionality.
 tools: read, write, bash, grep, find, ls
 model: kimi-coding/k2p5
-thinking: high
+thinking: medium
 output: refactoring-report.md
 defaultReads: plan.md, progress.md
 defaultProgress: true

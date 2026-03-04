@@ -1,6 +1,6 @@
 {
   "name": "pi-tk-flow",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": false,
   "type": "module",
   "description": "Reusable tk implementation workflow for pi (prompt + subagent templates + bootstrap command)",

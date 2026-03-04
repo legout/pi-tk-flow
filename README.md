@@ -32,7 +32,7 @@ Implementation presets include a final `tk-closer` step for commit + `tk add-not
 pi install git:github.com/legout/pi-tk-flow
 
 # or pin a release tag
-pi install git:github.com/legout/pi-tk-flow@v0.2.2
+pi install git:github.com/legout/pi-tk-flow@v0.2.3
 ```
 
 ### pi-subagents prerequisite

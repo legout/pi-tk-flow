@@ -2,7 +2,7 @@
 name: scout
 description: Fast codebase recon that returns compressed context for handoff
 tools: read, grep, find, ls, bash, write
-model: openrouter/stepfun/step-3.5-flash
+model: minimax/MiniMax-M2.5
 thinking: low
 output: context.md
 defaultProgress: true

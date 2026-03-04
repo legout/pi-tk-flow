@@ -3,7 +3,7 @@ name: simplifier
 description: Reduces complexity in code — shorter functions, fewer branches, less nesting, simpler expressions. Makes code easier to understand and maintain.
 tools: read, write, bash, grep, find, ls
 model: kimi-coding/k2p5
-thinking: high
+thinking: medium
 output: simplification-report.md
 defaultReads: plan.md, progress.md
 defaultProgress: true

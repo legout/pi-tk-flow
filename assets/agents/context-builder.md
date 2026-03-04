@@ -2,8 +2,8 @@
 name: context-builder
 description: Builds anchor context from ticket, lessons, and knowledge cache
 tools: read, grep, find, ls, bash
-model: zai/glm-5
-thinking: high
+model: minimax/MiniMax-M2.5
+thinking: medium
 output: anchor-context.md
 ---
 

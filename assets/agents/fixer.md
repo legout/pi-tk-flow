@@ -3,7 +3,7 @@ name: fixer
 description: Reads reviewer issues from review.md and systematically fixes all identified code problems
 tools: read, write, bash, grep, find, ls
 model: zai/glm-5
-thinking: high
+thinking: medium
 defaultReads: review.md, plan.md
 defaultProgress: true
 ---

@@ -2,7 +2,7 @@
 name: context-merger
 description: Lightweight agent that merges scout and context-builder outputs into final anchor context
 tools: read, write, bash
-model: openrouter/stepfun/step-3.5-flash
+model: zai/glm-5
 thinking: low
 output: merged-context.md
 ---
