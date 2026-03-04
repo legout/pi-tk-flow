@@ -1,124 +1,212 @@
----
-name: tk-workflow
-description: Bootstrap and run the tk planning -> ticketization -> implementation workflow with subagents, persistent research, progress tracking, and lessons learned.
----
+# tk-workflow Skill
 
-# TK Workflow
+Operator guidance for the pi-tk-flow ticket-driven development workflow.
 
-Use this workflow for end-to-end delivery:
-1) optional brainstorming
-2) planning docs
-3) ticket creation
-4) ticket implementation
+## When to Use Which Execution Mode
 
-Implementation chain presets include a final `tk-closer` step for commit + ticket close/status gating.
+### Quick Decision Tree
 
-## Setup
-
-Install/update subagent templates and reusable chain presets:
-
-```bash
-/tk-bootstrap --scope user
+```
+Need to implement a ticket?
+│
+├─ Can run unattended? ──YES──► Default mode (agent picks Path A/B/C)
+│
+├─ Want real-time supervision? ──YES──► --interactive
+│   └─ You watch the overlay, control with Ctrl+T/Ctrl+B/Ctrl+Q
+│
+├─ Want oversight without babysitting? ──YES──► --hands-free
+│   └─ Agent polls ~60s, you can take over anytime
+│
+└─ Long-running, check back later? ──YES──► --dispatch
+    └─ Fire-and-forget, agent notified on completion
 ```
 
-Optional project-local templates (trusted repos only):
+### Mode Selection Guide
+
+| Scenario | Recommended Mode | Why |
+|----------|-----------------|-----|
+| Quick bug fix (<50 LOC) | Default | No need for interactive overhead |
+| Complex feature with uncertainty | `--interactive` | Catch issues early, provide guidance |
+| Routine refactor with good tests | `--hands-free` | Monitor without full attention |
+| Research-heavy spike | `--dispatch` | May take hours, notification on done |
+| CI/CD integration | `--dispatch` | Headless, predictable |
+| Learning new codebase | `--interactive` | Watch how agents navigate code |
+| Production hotfix | `--interactive` | Tight control over changes |
+
+### Clarify Flag Combinations
+
+The `--clarify` flag opens a TUI for confirming chain steps before execution:
 
 ```bash
-/tk-bootstrap --scope project
+# Good: Clarify what will happen, then let it run hands-free
+/tk-implement TICKET-123 --hands-free --clarify
+
+# Good: Clarify then dispatch
+/tk-implement TICKET-123 --dispatch --clarify
+
+# Invalid: Interactive already shows everything, clarify conflicts
+/tk-implement TICKET-123 --interactive --clarify  # ❌ ERROR
 ```
 
-Materialize prompts + skills into local scope directories:
+## Session Lifecycle
+
+### Starting a Session
 
 ```bash
-/tk-bootstrap --scope user --copy-all
-/tk-bootstrap --scope project --copy-all
+# Interactive - you supervise
+/tk-implement TICKET-123 --interactive
+# → Overlay opens showing live output
+# → Ctrl+T to transfer output to agent context
+# → Ctrl+B to background (keep running, check later)
+# → Ctrl+Q for detach menu (transfer/background/kill)
+
+# Hands-free - agent monitors
+/tk-implement TICKET-123 --hands-free
+# → Returns immediately with session ID
+# → Agent polls every ~60 seconds
+# → You can /attach anytime to take over
+
+# Dispatch - notification on complete
+/tk-implement TICKET-123 --dispatch
+# → Returns immediately with session ID
+# → Runs headless
+# → Agent notified when done
 ```
 
-Preserve local edits (no overwrite when content differs):
+### During a Session
+
+**Keybindings (when attached to interactive/hands-free):**
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+T` | Transfer output to agent context and close overlay |
+| `Ctrl+B` | Background session (dismiss overlay, keep running) |
+| `Ctrl+Q` | Open detach menu with transfer/background/kill options |
+
+**Slash commands (anytime):**
 
 ```bash
-/tk-bootstrap --scope user --copy-all --no-overwrite
+/sessions                    # List all active sessions
+/attach calm-reef           # Reattach to specific session
+/attach                     # Interactive selector
+/dismiss calm-reef          # Kill and cleanup specific session
+/dismiss                    # Dismiss all sessions
 ```
 
-## Run workflow
+### After Completion
 
-### 0) Optional brainstorm
+Session metadata persists in `.subagent-runs/<ticket>/session.json`:
+
+```json
+{
+  "mode": "dispatch",
+  "sessionId": "calm-reef",
+  "startedAt": "2026-03-04T12:34:56Z",
+  "command": "pi \"/tk-implement TICKET-123\"",
+  "status": "completed"
+}
+```
+
+Chain outputs are in the same directory:
+- `.subagent-runs/TICKET-123/anchor-context.md`
+- `.subagent-runs/TICKET-123/plan.md`
+- `.subagent-runs/TICKET-123/implementation.md`
+- `.subagent-runs/TICKET-123/review.md`
+- etc.
+
+## Troubleshooting
+
+### Cannot reattach to session
+
+**Symptom:** `/attach my-session` says "Session not found"
+
+**Check:**
+1. Session may have completed — check `.subagent-runs/<ticket>/session.json` for `status: "completed"`
+2. Session may have been dismissed — check `/sessions` list
+3. Different working directory — session IDs are scoped to cwd
+
+### No notification from dispatch
+
+**Symptom:** Ran `--dispatch` but agent wasn't notified
+
+**Check:**
+1. Session may still be running — check `/sessions` or `.subagent-runs/<ticket>/session.json`
+2. Process may have crashed — check if `session.json` has `status: "failed"`
+3. Notification goes to the agent that called `interactive_shell` — if you switched agents, check the original
+
+### Interactive overlay won't open
+
+**Symptom:** `--interactive` runs but no overlay appears
+
+**Check:**
+1. `PI_TK_INTERACTIVE_CHILD` env var may be set (recursion guard)
+2. Another overlay may already be open (pi allows only one at a time)
+3. TUI may not be available in current context (e.g., headless SSH without display)
+
+### Hands-free polling too slow/fast
+
+**Symptom:** Updates feel too infrequent or too chatty
+
+The default polling is:
+- `updateInterval: 60000` (max 60s between updates)
+- `quietThreshold: 8000` (emit update after 8s silence)
+
+These are not configurable via flags currently — you can take over with `/attach` anytime for real-time updates.
+
+## Common Patterns
+
+### Pattern: Supervised Start, Background Finish
 
 ```bash
-/tk-brainstorm <topic>
-/tk-brainstorm <topic> --mode feature|refactor|simplify
+# Start interactive, then background when comfortable
+/tk-implement TICKET-123 --interactive
+# ... watch initial progress ...
+# Ctrl+B to background
+# ... do other work ...
+/attach  # later, to check progress
 ```
 
-Research/library deep-dives are auto-routed when needed (no research flag).
-
-### 1) Plan
+### Pattern: Clarify, Then Dispatch
 
 ```bash
-/tk-plan <topic>                          # fast mode (default) — parallel PRD/Spec/Design
-/tk-plan <topic> --thorough               # sequential with full synthesis
-/tk-plan <topic> --mode feature|refactor|simplify
-/tk-plan <topic> --from .tf/plans/<plan-dir>/00-design.md
+# Review the plan, then let it run
+/tk-implement TICKET-123 --dispatch --clarify
+# ... TUI opens showing planned chain steps ...
+# Approve steps, then session runs headless
+# Agent notified when complete
 ```
 
-**Fast vs Thorough:**
-- `--fast` (default): PRD, Spec, and Design created in parallel (~30% faster)
-- `--thorough`: Sequential PRD → Spec → Design with full cross-synthesis (higher quality docs)
-
-### 2) Optional plan quality gate + refinement
+### Pattern: Batch Dispatch Multiple Tickets
 
 ```bash
-/tk-plan-check .tf/plans/<plan-dir>
-/tk-plan-check .tf/plans/<plan-dir>/03-implementation-plan.md --thorough
-/tk-plan-refine .tf/plans/<plan-dir>
+# Queue up several tickets to run in parallel
+/tk-implement TICKET-100 --dispatch
+/tk-implement TICKET-101 --dispatch
+/tk-implement TICKET-102 --dispatch
+# ... check /sessions for status of all three
 ```
 
-### 3) Ticketize
+## Guardrails and Constraints
 
-```bash
-/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md           # create tickets (default)
-/tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run # preview only
-```
+1. **Mutual Exclusion:** Only one of `--interactive`, `--hands-free`, `--dispatch` at a time
+2. **No Async Mixing:** New interactive flags cannot combine with `--async` (legacy)
+3. **No Interactive + Clarify:** Overlay conflict — use hands-free or dispatch with clarify instead
+4. **Recursion Guard:** Nested invocations automatically disable interactive routing (via `PI_TK_INTERACTIVE_CHILD`)
+5. **Scope Preservation:** Agent scope (user/project) is preserved through interactive sessions
 
-### 4) Implement
+## Migration from --async
 
-```bash
-/tk-implement <ticket-id>          # main agent decides path after analysis
-/tk-implement <ticket-id> --async  # background execution
-/tk-implement <ticket-id> --clarify # open chain clarification TUI
-```
+If you previously used `--async` for background execution:
 
-**How it works:**
-1. Builds ticket seed context, then runs fast anchoring (`scout` + `context-builder` in parallel, merged; scout cache reused when valid)
-2. **YOU (the main agent)** analyze the ticket and anchor context
-3. Choose the path:
-   - **Path A (Minimal)**: Simple config/docs/fixes. No research. Review only.
-   - **Path B (Standard)**: Features/integrations. Planner-B + parallel review+test.
-   - **Path C (Deep)**: Complex/AI/novel work. Research (if needed) + Planner-C + parallel review+test.
-4. Research is never skipped when context identifies knowledge gaps
+| Old | New | Reason |
+|-----|-----|--------|
+| `--async` | `--dispatch` | Cleaner notification model |
+| `--async --clarify` | `--dispatch --clarify` | Clarify works with dispatch |
 
-## Expected artifacts
+Legacy `--async` continues to work but new interactive modes are preferred for human-in-the-loop workflows.
 
-- `.tf/plans/<date>-<topic>/00-brainstorm.md`
-- `.tf/plans/<date>-<topic>/00-design.md`
-- `.tf/plans/<date>-<topic>/01-prd.md`
-- `.tf/plans/<date>-<topic>/02-spec.md`
-- `.tf/plans/<date>-<topic>/03-implementation-plan.md`
-- `.tf/plans/<date>-<topic>/04-ticket-breakdown.md`
-- `.tf/plans/<date>-<topic>/05-plan-gaps.md` (optional quality gate)
-- `.tf/plans/<date>-<topic>/06-plan-review.md` (optional quality gate)
-- `.tf/plans/<date>-<topic>/07-refinement-summary.md` (optional refine)
-- `.tf/plans/<date>-<topic>/tickets.yaml`
-- `.subagent-runs/*` chain artifacts
-- `.tf/knowledge/` reusable research cache
-- `.tf/progress.md` appended progress entries
-- `.tf/AGENTS.md` updated only with new, useful lessons
+## See Also
 
-## Notes
-
-- Default agent scope for safety is `user`.
-- If you bootstrap with `--scope project`, align prompt agent scope accordingly (`project` or `both`).
-- `tk-ticketize` defaults to `--create` (creates tickets immediately). Use `--dry-run` to preview.
-- `tk-plan` defaults to `--fast` (parallel documenters). Use `--thorough` for sequential synthesis.
-- `tk-plan-check` and `tk-plan-refine` default to `--fast`; use `--thorough` for deeper architecture validation/refinement.
-- `tk-bootstrap` overwrites changed files by default; add `--no-overwrite` to keep local modifications (changed files are skipped).
-- `tk-implement`: Main agent decides path after analyzing ticket. Research is never skipped when needed.
+- `README.md` — Full workflow documentation
+- `prompts/tk-implement.md` — Implementation prompt template
+- `.tf/plans/*/02-spec.md` — Design specifications for interactive features

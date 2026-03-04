@@ -13,13 +13,37 @@ Treat `$@` as raw input that may include a ticket id plus flags.
 Supported flags:
 - `--async` → run subagent execution in background mode (`async: true`)
 - `--clarify` → open chain clarification TUI (`clarify: true`)
+- `--interactive` → run with interactive overlay (supervised, blocking)
+- `--hands-free` → run with agent-monitored overlay (polling, non-blocking)
+- `--dispatch` → run headless background with notification (fire-and-forget)
 
 Parsing rules:
 1. Extract `TICKET_ID` as the first non-flag token.
-2. Set `RUN_ASYNC` and `RUN_CLARIFY` booleans from flags.
+2. Set flag booleans: `RUN_ASYNC`, `RUN_CLARIFY`, `RUN_INTERACTIVE`, `RUN_HANDS_FREE`, `RUN_DISPATCH`.
 3. If `TICKET_ID` is missing, STOP and ask for a ticket id.
-4. If both `--async` and `--clarify` are set, prefer async and set clarify=false.
-5. Reject unknown flags with a short help message.
+4. Reject unknown flags with a short help message.
+
+**Flag Validation Matrix:**
+
+| Combination | Valid | Error if invalid |
+|-------------|-------|------------------|
+| `--interactive` + `--hands-free` | ❌ | Cannot combine --interactive with --hands-free |
+| `--interactive` + `--dispatch` | ❌ | Cannot combine --interactive with --dispatch |
+| `--hands-free` + `--dispatch` | ❌ | Cannot combine --hands-free with --dispatch |
+| `--interactive` + `--async` | ❌ | Interactive modes cannot be used with --async |
+| `--hands-free` + `--async` | ❌ | Interactive modes cannot be used with --async |
+| `--dispatch` + `--async` | ❌ | Interactive modes cannot be used with --async |
+| `--interactive` + `--clarify` | ❌ | --interactive and --clarify are mutually exclusive (overlay conflict) |
+| `--hands-free` + `--clarify` | ✅ | Clarify runs before hands-free overlay |
+| `--dispatch` + `--clarify` | ✅ | Clarify runs before dispatch |
+| `--async` + `--clarify` | ⚠️ | Async wins, clarify=false (legacy behavior) |
+
+Validation order:
+1. Check for unknown flags first.
+2. Check mutual exclusivity among `--interactive`, `--hands-free`, `--dispatch`.
+3. Check interactive flags against `--async`.
+4. Check `--interactive` against `--clarify`.
+5. Apply legacy rule: if `--async` and `--clarify` both set, prefer async.
 
 ## Subagent Scope Guardrails (Critical)
 
@@ -322,7 +346,122 @@ If `context-merger` is missing **and** `CACHE_VALID=true`, use this cache-hit fa
 - Parallel: Scout + context-builder run simultaneously (~40% faster)
 - Caching: Skip scout entirely if unchanged (~100% faster for re-runs)
 
-## 2. YOU Decide the Implementation Path
+## 2. Interactive Mode Router (Post-Anchoring)
+
+If any interactive flag (`--interactive`, `--hands-free`, `--dispatch`) is set, route through `interactive_shell` **instead of** Path A/B/C execution. This section runs after fast anchoring completes and before Path selection.
+
+### 2a. Recursion Guard
+
+Prevent nested interactive invocations from re-entering this router:
+
+```bash
+# Check recursion sentinel
+if [ -n "$PI_TK_INTERACTIVE_CHILD" ]; then
+  # Already running inside interactive_shell, fall through to Path A/B/C
+  RUN_INTERACTIVE=false
+  RUN_HANDS_FREE=false
+  RUN_DISPATCH=false
+fi
+```
+
+### 2b. Build Nested Command
+
+Construct the inner `/tk-implement` command that runs inside the interactive session:
+
+```bash
+# Build base command
+INNER_CMD="pi \"/tk-implement <TICKET_ID>"
+
+# Pass --clarify if set (allowed with hands-free and dispatch)
+if [ "<RUN_CLARIFY>" = "true" ]; then
+  INNER_CMD="$INNER_CMD --clarify"
+fi
+
+INNER_CMD="$INNER_CMD\""
+```
+
+### 2c. Route to interactive_shell
+
+If `RUN_INTERACTIVE`, `RUN_HANDS_FREE`, or `RUN_DISPATCH` is true:
+
+**For `--interactive` mode:**
+```json
+{
+  "command": "<INNER_CMD>",
+  "mode": "interactive",
+  "reason": "Interactive supervised execution for <TICKET_ID>"
+}
+```
+
+**For `--hands-free` mode:**
+```json
+{
+  "command": "<INNER_CMD>",
+  "mode": "hands-free",
+  "reason": "Hands-free monitored execution for <TICKET_ID>",
+  "handsFree": {
+    "updateMode": "on-quiet",
+    "quietThreshold": 8000,
+    "updateInterval": 60000,
+    "autoExitOnQuiet": false
+  }
+}
+```
+
+**For `--dispatch` mode:**
+```json
+{
+  "command": "<INNER_CMD>",
+  "mode": "dispatch",
+  "background": true,
+  "reason": "Background dispatched execution for <TICKET_ID>"
+}
+```
+
+### 2d. Session Metadata Persistence
+
+On successful `interactive_shell` invocation, write session metadata:
+
+```json
+{
+  "mode": "<interactive|hands-free|dispatch>",
+  "sessionId": "<sessionId_from_result>",
+  "startedAt": "<ISO8601_timestamp>",
+  "command": "<INNER_CMD>",
+  "status": "pending"
+}
+```
+
+Write to: `.subagent-runs/<TICKET_ID>/session.json`
+
+**Console breadcrumbs to emit:**
+```
+═══════════════════════════════════════════════════════════════
+  Interactive Session Started
+  Mode: <mode>
+  Session ID: <sessionId>
+
+  Commands:
+    /attach <sessionId>    Reattach to this session
+    /sessions              List all active sessions
+
+  Keybindings:
+    Ctrl+T  Transfer output to agent context
+    Ctrl+B  Background session (keep running)
+    Ctrl+Q  Detach menu (transfer/background/kill)
+═══════════════════════════════════════════════════════════════
+```
+
+### 2e. Execution Flow
+
+1. Call `interactive_shell` with appropriate mode parameters
+2. If successful, persist `session.json` and emit breadcrumbs
+3. Set `PI_TK_INTERACTIVE_CHILD=1` env var in nested command context
+4. Return control to user (interactive mode) or agent (hands-free/dispatch)
+
+**Important:** When any interactive mode is active, SKIP Path A/B/C execution in sections 3-4. The nested command (without interactive flags) will execute the full Path A/B/C flow.
+
+## 3. YOU Decide the Implementation Path
 
 Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 
@@ -356,7 +495,7 @@ Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 - Research required (check .tf/knowledge first, then fill gaps)
 - Parallel validation speeds up feedback
 
-## 3. Execute Chosen Path
+## 4. Execute Chosen Path
 
 Before execution, run path-specific preflight (from guardrails above) and stop if any required agent is missing.
 
@@ -508,7 +647,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
 }
 ```
 
-## 4. Execute and Report
+## 5. Execute and Report
 
 Use `subagent` tool with chosen path and report:
 
@@ -580,6 +719,16 @@ Else: `tk status <TICKET_ID> in_progress`
 ## Example Usage
 
 ```
-/tk-implement TICKET-123              # you decide path after analysis
-/tk-implement TICKET-123 --async      # background execution
+/tk-implement TICKET-123                        # you decide path after analysis
+/tk-implement TICKET-123 --async                # background execution (legacy)
+/tk-implement TICKET-123 --clarify              # chain clarification TUI
+
+# Interactive modes (new)
+/tk-implement TICKET-123 --interactive          # supervised overlay (blocking)
+/tk-implement TICKET-123 --hands-free           # agent-monitored overlay
+/tk-implement TICKET-123 --dispatch             # background + notification
+
+# Valid combinations
+/tk-implement TICKET-123 --hands-free --clarify # clarify then hands-free
+/tk-implement TICKET-123 --dispatch --clarify   # clarify then dispatch
 ```
