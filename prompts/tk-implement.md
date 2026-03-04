@@ -424,8 +424,8 @@ fi
 Construct the inner `/tk-implement` command that runs inside the interactive session:
 
 ```bash
-# Build base command
-INNER_CMD="pi \"/tk-implement <TICKET_ID>"
+# Build base command with recursion guard to prevent nested interactive loops
+INNER_CMD="PI_TK_INTERACTIVE_CHILD=1 pi \"/tk-implement <TICKET_ID>"
 
 # Pass --clarify if set (allowed with hands-free and dispatch)
 if [ "<RUN_CLARIFY>" = "true" ]; then
@@ -475,24 +475,46 @@ If `RUN_INTERACTIVE`, `RUN_HANDS_FREE`, or `RUN_DISPATCH` is true:
 
 ### 2d. Session Metadata Persistence
 
-On successful `interactive_shell` invocation, persist session metadata and emit breadcrumbs.
+On successful `interactive_shell` invocation, persist session metadata using atomic write and emit breadcrumbs.
 
 **Implementation Steps:**
 
 1. **Extract sessionId from result** - The `interactive_shell` call returns a `sessionId` (e.g., "calm-reef")
 
-2. **Write session.json** to `.subagent-runs/<TICKET_ID>/session.json`:
-```json
+2. **Atomic Write session.json** using temp-file + rename pattern to prevent partial/corrupt files:
+
+```bash
+SESSION_DIR=".subagent-runs/<TICKET_ID>"
+SESSION_FILE="$SESSION_DIR/session.json"
+TEMP_FILE="$SESSION_FILE.tmp.$$"  # $$ provides process-specific suffix
+
+# Ensure directory exists
+mkdir -p "$SESSION_DIR"
+
+# Write to temp file first (prevents partial files on crash/interrupt)
+cat > "$TEMP_FILE" << 'SESS_EOF'
 {
-  "mode": "<interactive|hands-free|dispatch>",
+  "mode": "<MODE>",
   "sessionId": "<sessionId_from_result>",
   "startedAt": "<ISO8601_timestamp>",
   "command": "<INNER_CMD>",
   "status": "pending"
 }
+SESS_EOF
+
+# Sync to disk for durability (best-effort; ignore errors on systems without sync)
+sync "$TEMP_FILE" 2>/dev/null || true
+
+# Atomic rename (on POSIX filesystems, rename is atomic)
+mv "$TEMP_FILE" "$SESSION_FILE"
+
+# Clear temp file reference after successful rename
+TEMP_FILE=""
 ```
 
-3. **Emit console breadcrumbs** immediately after successful invocation:
+**Critical:** The temp file MUST use a unique suffix (e.g., `.$$` for PID) to avoid collisions from concurrent invocations.
+
+3. **Emit console breadcrumbs** immediately after successful atomic write:
 ```
 ═══════════════════════════════════════════════════════════════
   Interactive Session Started
@@ -513,8 +535,21 @@ On successful `interactive_shell` invocation, persist session metadata and emit 
 **Failure Handling:**
 
 If `interactive_shell` invocation fails:
-1. **Do NOT write session.json** - partial/corrupt files must not be created
-2. **Emit actionable error message**:
+
+```bash
+# 1. Clean up any temp file that may have been created
+if [ -n "$TEMP_FILE" ] && [ -f "$TEMP_FILE" ]; then
+  rm -f "$TEMP_FILE"
+  TEMP_FILE=""
+fi
+
+# 2. Ensure no session.json was written (it should not exist if we failed before write)
+#    If somehow it exists from a previous run, DO NOT modify it
+```
+
+1. **Clean up temp file** - Remove `$TEMP_FILE` if it exists before exiting
+2. **Do NOT write session.json** - partial/corrupt files must not be created
+3. **Emit actionable error message**:
    ```
    ERROR: Failed to start interactive session
    
@@ -529,8 +564,8 @@ If `interactive_shell` invocation fails:
    - Try without interactive flags for non-interactive execution
    - Check system resources (memory, disk space)
    ```
-3. **Preserve existing artifacts** - Do not delete/modify any existing `.subagent-runs/<TICKET_ID>/` contents
-4. **Exit with error status** - Do not continue to Path A/B/C execution
+4. **Preserve existing artifacts** - Do not delete/modify any existing `.subagent-runs/<TICKET_ID>/` contents
+5. **Exit with error status** - Do not continue to Path A/B/C execution
 
 **Non-Interactive Guard:**
 
@@ -600,14 +635,15 @@ Dispatch mode:
 │                                                              │
 │  4. Call interactive_shell with mode parameters             │
 │     ├─ On SUCCESS:                                          │
-│     │  a. Write session.json with status "pending"          │
+│     │  a. Atomic write session.json (temp→sync→rename)      │
 │     │  b. Emit console breadcrumbs                          │
 │     │  c. Return control (user/agent/background)            │
 │     │                                                       │
 │     └─ On FAILURE:                                          │
-│        a. Do NOT write session.json                         │
-│        b. Emit actionable error message                     │
-│        c. STOP (do not proceed to Path A/B/C)               │
+│        a. Clean up temp file if exists                      │
+│        b. Do NOT write session.json                         │
+│        c. Emit actionable error message                     │
+│        d. STOP (do not proceed to Path A/B/C)               │
 │                                                              │
 │  5. SKIP Path A/B/C - nested command will run them          │
 └─────────────────────────────────────────────────────────────┘
@@ -635,8 +671,8 @@ Dispatch mode:
    - Dispatch mode: background, notification on completion
 
 5. **Handle result:**
-   - **Success:** Write session.json, emit breadcrumbs, return
-   - **Failure:** Emit error guidance, cleanup (no partial files), exit
+   - **Success:** Atomic write session.json, emit breadcrumbs, return
+   - **Failure:** Clean up temp file, emit error guidance, exit
 
 6. **Skip Path A/B/C** when interactive mode is active
    - The nested command (without interactive flags) will execute the full Path A/B/C flow
