@@ -7,6 +7,9 @@ from __future__ import annotations
 
 import logging
 import os
+import shlex
+import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -103,8 +106,8 @@ class TopicBrowser(Static):
                     Label(f"[b]{type_name.upper()}[/b]"),
                     disabled=True
                 ))
-                # Add topics (sorted by title)
-                for topic in sorted(by_type[type_name], key=lambda t: t.title):
+                # Add topics (sorted by title, case-insensitive)
+                for topic in sorted(by_type[type_name], key=lambda t: t.title.lower()):
                     list_view.append(DataListItem(
                         Label(f"  {topic.title}"),
                         data=topic
@@ -142,7 +145,7 @@ class TopicBrowser(Static):
                 ))
                 return
             
-            for topic in sorted(results, key=lambda t: t.title):
+            for topic in sorted(results, key=lambda t: t.title.lower()):
                 list_view.append(DataListItem(
                     Label(f"[{topic.topic_type}] {topic.title}"),
                     data=topic
@@ -198,36 +201,44 @@ class TopicBrowser(Static):
         self._open_file(topic.file_path)
     
     def _open_file(self, file_path: Path) -> None:
-        """Open a file using PAGER or EDITOR."""
+        """Open a file using PAGER or EDITOR (safe implementation without shell)."""
         if not file_path.exists():
             self.notify(f"File not found: {file_path}", severity="error")
             return
         
         # Determine command to use
-        pager = os.environ.get("PAGER", "").strip()
         editor = os.environ.get("EDITOR", "").strip()
+        pager = os.environ.get("PAGER", "").strip()
         
-        cmd = None
-        if pager:
-            cmd = f'{pager} "{file_path}"'
-        elif editor:
-            cmd = f'{editor} "{file_path}"'
+        cmd_parts = None
+        if editor:
+            # Parse editor command (may include flags like "code -w")
+            try:
+                cmd_parts = shlex.split(editor) + [str(file_path)]
+            except ValueError:
+                # Fallback if shlex fails
+                cmd_parts = [editor, str(file_path)]
+        elif pager:
+            try:
+                cmd_parts = shlex.split(pager) + [str(file_path)]
+            except ValueError:
+                cmd_parts = [pager, str(file_path)]
         else:
-            # Fallback to common pagers
+            # Find fallback pager without shell
             for fallback in ["less", "more", "cat"]:
-                result = os.system(f"which {fallback} > /dev/null 2>&1")
-                if result == 0:
-                    cmd = f'{fallback} "{file_path}"'
+                if shutil.which(fallback):
+                    cmd_parts = [fallback, str(file_path)]
                     break
         
-        if not cmd:
+        if not cmd_parts:
             self.notify("No pager or editor found. Set $PAGER or $EDITOR.", severity="error")
             return
         
-        # Run the command with terminal suspend
+        # Run the command with terminal suspend (no shell)
         try:
             with self.app.suspend():
-                exit_code = os.system(cmd)
+                result = subprocess.run(cmd_parts, check=False)
+                exit_code = result.returncode
         except Exception as e:
             self.notify(f"Failed to suspend terminal: {e}", severity="error")
             return
@@ -521,16 +532,12 @@ class TicketBoard(Static):
     
     def _open_file(self, file_path: Path) -> None:
         """Open a file using PAGER or EDITOR."""
-        import shutil
-        import subprocess
-        
         editor = os.environ.get("EDITOR", "").strip()
         pager = os.environ.get("PAGER", "").strip()
         
         cmd_parts = None
         if editor:
             # Parse editor command (may include flags like "code -w")
-            import shlex
             try:
                 cmd_parts = shlex.split(editor) + [str(file_path)]
             except ValueError:
@@ -538,7 +545,6 @@ class TicketBoard(Static):
                 cmd_parts = [editor, str(file_path)]
         elif pager:
             try:
-                import shlex
                 cmd_parts = shlex.split(pager) + [str(file_path)]
             except ValueError:
                 cmd_parts = [pager, str(file_path)]
