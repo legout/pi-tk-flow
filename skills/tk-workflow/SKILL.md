@@ -32,6 +32,16 @@ Need to implement a ticket?
 | CI/CD integration | `--dispatch` | Headless, predictable |
 | Learning new codebase | `--interactive` | Watch how agents navigate code |
 | Production hotfix | `--interactive` | Tight control over changes |
+| Existing automation using `--async` | `--async` (legacy) | Backward compatibility only |
+
+### When to Use Legacy `--async`
+
+The `--async` flag remains available for backward compatibility with existing automation scripts. For new workflows:
+
+- **Prefer `--dispatch`** for fire-and-forget background execution with automatic notification
+- **Use `--async`** only when maintaining existing scripts that cannot be updated immediately
+
+Legacy `--async` will continue to work, but new interactive modes (`--hands-free`, `--dispatch`) provide better visibility and control.
 
 ### Clarify Flag Combinations
 

@@ -103,7 +103,7 @@ Existing file behavior:
 # 2) Optional plan quality gate + refinement
 /tk-plan-check .tf/plans/<plan-dir>
 /tk-plan-check .tf/plans/<plan-dir>/03-implementation-plan.md --thorough
-/tk-plan-refine .tf/plans/<plan-dir>                  # applies refinements when needed
+/tk-plan-refine .tf/plans/<plan-dir>                  # applies refinements when needed (uses existing plan-check findings if present)
 /tk-plan-refine .tf/plans/<plan-dir> --thorough
 
 # 3) Ticket decomposition (default creates tickets)
@@ -186,7 +186,7 @@ Interactive sessions are tracked in `.subagent-runs/<ticket>/session.json`:
 
 | Flags | Valid | Notes |
 |-------|-------|-------|
-| `--interactive` | ✅ | Standalone or with `--hands-free`/`--dispatch` ❌ |
+| `--interactive` | ✅ | Standalone only; cannot combine with `--hands-free`, `--dispatch`, or `--clarify` |
 | `--hands-free` | ✅ | Can add `--clarify` |
 | `--dispatch` | ✅ | Can add `--clarify` |
 | `--interactive` + `--clarify` | ❌ | Overlay conflict |
@@ -277,7 +277,7 @@ Serve the UI in a web browser (requires `textual` CLI):
 textual serve "python -m pi_tk_flow_ui" --host 127.0.0.1 --port 8000
 
 # Bind to all interfaces (allows external access)
-textual serve "python -m pi_tk_flow_ui" --host 0.0.0.0 --port 8080
+textual serve "python -m pi_tk_flow_ui" --host 0.0.0.0 --port 8000
 ```
 
 ⚠️ **Security Note**: When binding to `0.0.0.0`, ensure proper firewall rules are in place. The UI has no authentication.
