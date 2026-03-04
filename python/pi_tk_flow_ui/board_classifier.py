@@ -194,6 +194,9 @@ class BoardClassifier:
         Returns:
             True if ticket has unresolved dependencies
         """
+        # Ensure ticket map is initialized for safe dependency checks
+        if not self._ticket_map:
+            self._ticket_map = {t.id: t for t in self.tickets}
         blocking = self._get_blocking_deps(ticket)
         return len(blocking) > 0
     
@@ -204,6 +207,10 @@ class BoardClassifier:
             List of tickets that are open (not in_progress or closed)
             and have no blocking dependencies.
         """
+        # Ensure ticket map is initialized for safe dependency checks
+        if not self._ticket_map:
+            self._ticket_map = {t.id: t for t in self.tickets}
+        
         ready: list["Ticket"] = []
         for ticket in self.tickets:
             if ticket.status not in ("closed", "in_progress"):

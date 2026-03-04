@@ -122,13 +122,16 @@ class YamlTicketLoader:
             
             tickets_file = plan_dir / "tickets.yaml"
             if not tickets_file.exists():
+                # Explicitly warn about missing tickets.yaml for plan directories
+                logger.warning(f"Skipping plan '{plan_dir.name}': no tickets.yaml found")
                 continue
             
             try:
                 plan_tickets = self.load_plan(plan_dir)
                 all_tickets.extend(plan_tickets)
             except Exception as e:
-                logger.warning(f"Failed to load tickets from {plan_dir}: {e}")
+                # Explicit warning for malformed/skipped plans (non-fatal)
+                logger.warning(f"Skipping plan '{plan_dir.name}': {e}")
                 continue
         
         return all_tickets
@@ -158,6 +161,9 @@ class YamlTicketLoader:
         except IOError as e:
             raise TicketLoadError(f"Cannot read {tickets_file}: {e}")
         
+        # Treat malformed top-level YAML shapes as skippable errors
+        if data is None:
+            raise TicketLoadError(f"Empty or null YAML content in {tickets_file}")
         if not isinstance(data, dict):
             raise TicketLoadError(f"Invalid tickets.yaml format: expected dict, got {type(data).__name__}")
         

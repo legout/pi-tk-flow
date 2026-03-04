@@ -127,6 +127,50 @@ class TestYamlTicketLoader:
         
         assert len(tickets) == 3  # epic + 2 slices
     
+    def test_multi_plan_aggregation(self, tmp_path):
+        """Test loading tickets from multiple plan directories (criterion #1)."""
+        tf_dir = tmp_path / ".tf"
+        plans_dir = tf_dir / "plans"
+        
+        # Create first plan
+        plan1_dir = plans_dir / "plan-alpha"
+        plan1_dir.mkdir(parents=True)
+        with open(plan1_dir / "tickets.yaml", "w") as f:
+            yaml.dump({
+                "slices": [{"key": "A1", "title": "Alpha ticket"}]
+            }, f)
+        
+        # Create second plan
+        plan2_dir = plans_dir / "plan-beta"
+        plan2_dir.mkdir(parents=True)
+        with open(plan2_dir / "tickets.yaml", "w") as f:
+            yaml.dump({
+                "slices": [{"key": "B1", "title": "Beta ticket"}]
+            }, f)
+        
+        # Create third plan
+        plan3_dir = plans_dir / "plan-gamma"
+        plan3_dir.mkdir(parents=True)
+        with open(plan3_dir / "tickets.yaml", "w") as f:
+            yaml.dump({
+                "slices": [{"key": "G1", "title": "Gamma ticket"}]
+            }, f)
+        
+        loader = YamlTicketLoader(tf_dir)
+        tickets = loader.load_all()
+        
+        # Should aggregate tickets from all 3 plans
+        assert len(tickets) == 3
+        
+        # Verify plan_name and plan_dir are preserved for each
+        ticket_ids = {t.id: t for t in tickets}
+        assert ticket_ids["A1"].plan_name == "plan-alpha"
+        assert ticket_ids["B1"].plan_name == "plan-beta"
+        assert ticket_ids["G1"].plan_name == "plan-gamma"
+        assert str(plan1_dir) in ticket_ids["A1"].plan_dir
+        assert str(plan2_dir) in ticket_ids["B1"].plan_dir
+        assert str(plan3_dir) in ticket_ids["G1"].plan_dir
+    
     def test_empty_plans_directory(self, tmp_path):
         """Test loading when plans directory is empty."""
         tf_dir = tmp_path / ".tf"
@@ -148,8 +192,10 @@ class TestYamlTicketLoader:
         
         assert tickets == []
     
-    def test_invalid_yaml_skipped(self, sample_tf_dir):
-        """Test that invalid YAML files are skipped with warning."""
+    def test_invalid_yaml_skipped_with_warning(self, sample_tf_dir, caplog):
+        """Test that invalid YAML files are skipped with explicit warning (criterion #3)."""
+        import logging
+        
         # Add an invalid YAML file
         bad_plan_dir = sample_tf_dir / "plans" / "bad-plan"
         bad_plan_dir.mkdir()
@@ -159,10 +205,80 @@ class TestYamlTicketLoader:
         loader = YamlTicketLoader(sample_tf_dir)
         
         # Should not raise, just skip the bad file
-        tickets = loader.load_all()
+        with caplog.at_level(logging.WARNING):
+            tickets = loader.load_all()
         
         # Should still have tickets from the good plan
         assert len(tickets) == 3
+        
+        # Should have logged a warning about the bad plan being skipped
+        assert any("bad-plan" in record.message and "skipping" in record.message.lower() 
+                   for record in caplog.records)
+    
+    def test_missing_tickets_yaml_warning(self, tmp_path, caplog):
+        """Test that missing tickets.yaml produces explicit warning (criterion #3)."""
+        import logging
+        
+        tf_dir = tmp_path / ".tf"
+        plans_dir = tf_dir / "plans"
+        
+        # Create a plan directory without tickets.yaml
+        plan_dir = plans_dir / "empty-plan"
+        plan_dir.mkdir(parents=True)
+        # Create a placeholder file so directory is detected as a plan
+        (plan_dir / "README.md").write_text("# Empty Plan")
+        
+        loader = YamlTicketLoader(tf_dir)
+        
+        with caplog.at_level(logging.WARNING):
+            tickets = loader.load_all()
+        
+        assert tickets == []
+        assert any("empty-plan" in record.message and "no tickets.yaml" in record.message.lower() 
+                   for record in caplog.records)
+    
+    def test_empty_yaml_skipped_with_warning(self, sample_tf_dir, caplog):
+        """Test that empty YAML files are skipped with warning (criterion #3)."""
+        import logging
+        
+        # Add an empty YAML file
+        empty_plan_dir = sample_tf_dir / "plans" / "empty-plan"
+        empty_plan_dir.mkdir()
+        with open(empty_plan_dir / "tickets.yaml", "w") as f:
+            f.write("")  # Empty content
+        
+        loader = YamlTicketLoader(sample_tf_dir)
+        
+        with caplog.at_level(logging.WARNING):
+            tickets = loader.load_all()
+        
+        # Should still have tickets from the good plan
+        assert len(tickets) == 3
+        
+        # Should have logged a warning about empty YAML
+        assert any("empty-plan" in record.message and "empty" in record.message.lower() 
+                   for record in caplog.records)
+    
+    def test_non_dict_yaml_skipped_with_warning(self, sample_tf_dir, caplog):
+        """Test that non-dict top-level YAML shapes are skipped with warning (criterion #3)."""
+        import logging
+        
+        # Add a YAML file with non-dict top-level (list instead of dict)
+        bad_plan_dir = sample_tf_dir / "plans" / "list-plan"
+        bad_plan_dir.mkdir()
+        with open(bad_plan_dir / "tickets.yaml", "w") as f:
+            yaml.dump(["item1", "item2"])  # List at top level
+        
+        loader = YamlTicketLoader(sample_tf_dir)
+        
+        with caplog.at_level(logging.WARNING):
+            tickets = loader.load_all()
+        
+        # Should still have tickets from the good plan
+        assert len(tickets) == 3
+        
+        # Should have logged a warning about invalid format
+        assert any("list-plan" in record.message for record in caplog.records)
     
     def test_parse_deps_string(self, sample_tf_dir):
         """Test parsing blocked_by as string."""
@@ -230,6 +346,45 @@ class TestStatusQuery:
             
             assert status == "in_progress"
             mock_run.assert_called_once()
+    
+    def test_tk_command_contract(self, sample_tf_dir):
+        """Test that tk is invoked with exact command/flags and timeout (criterion #2)."""
+        loader = YamlTicketLoader(sample_tf_dir)
+        
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0,
+                stdout=json.dumps({"status": "open"}),
+                stderr=""
+            )
+            
+            loader._query_tk_status("TEST-123")
+            
+            # Verify exact command structure
+            mock_run.assert_called_once_with(
+                ["tk", "show", "TEST-123", "--format", "json"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+    
+    def test_status_query_data_payload(self, sample_tf_dir):
+        """Test status query with {'data': {'status': ...}} payload shape (criterion #2)."""
+        loader = YamlTicketLoader(sample_tf_dir)
+        
+        # Test with nested "data" key
+        mock_response = json.dumps({"data": {"status": "in_progress"}})
+        
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0,
+                stdout=mock_response,
+                stderr=""
+            )
+            
+            status = loader._query_tk_status("S1")
+            
+            assert status == "in_progress"
     
     def test_status_query_nested_json(self, sample_tf_dir):
         """Test status query with nested JSON structure."""

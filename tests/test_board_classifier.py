@@ -141,6 +141,70 @@ class TestBoardClassifier:
         
         assert result.tickets[0].column == BoardColumn.BLOCKED
         assert "UNKNOWN" in result.tickets[0].blocking_deps
+
+    def test_classify_closed_ticket_with_deps_stays_closed(self):
+        """Test that closed tickets with dependencies stay CLOSED (criterion #4 precedence)."""
+        # Even if T1 has an open dependency (T2), it should still be CLOSED
+        # because CLOSED status takes precedence over BLOCKED
+        t1 = Ticket(id="T1", title="Done with deps", body="", status="closed", deps=["T2"], plan_name="p")
+        t2 = Ticket(id="T2", title="Open dep", body="", status="open", plan_name="p")
+        
+        classifier = BoardClassifier([t1, t2])
+        result = classifier.classify()
+        
+        t1_classified = next(ct for ct in result.tickets if ct.id == "T1")
+        
+        # CLOSED takes precedence over BLOCKED
+        assert t1_classified.column == BoardColumn.CLOSED
+        assert t1_classified.blocking_deps == []  # No need to report blockers for closed tickets
+
+    def test_classify_mixed_known_unknown_deps(self):
+        """Test tickets with mix of known open and unknown dependencies (criterion #5)."""
+        # Known ticket T2 is open, UNKNOWN-DEP doesn't exist
+        t1 = Ticket(id="T1", title="Mixed deps", body="", status="open", deps=["T2", "UNKNOWN-DEP"], plan_name="p")
+        t2 = Ticket(id="T2", title="Open dep", body="", status="open", plan_name="p")
+        
+        classifier = BoardClassifier([t1, t2])
+        result = classifier.classify()
+        
+        t1_classified = next(ct for ct in result.tickets if ct.id == "T1")
+        
+        assert t1_classified.column == BoardColumn.BLOCKED
+        assert "T2" in t1_classified.blocking_deps
+        assert "UNKNOWN-DEP" in t1_classified.blocking_deps
+
+    def test_is_blocked_with_unknown_dep(self):
+        """Test is_blocked helper with unknown dependencies (criterion #5)."""
+        ticket = Ticket(id="T1", title="Unknown dep", body="", status="open", deps=["UNKNOWN"], plan_name="p")
+        
+        classifier = BoardClassifier([ticket])
+        # Don't call classify() - test that is_blocked works without ticket_map initialized
+        assert classifier.is_blocked(ticket) is True
+
+    def test_is_blocked_helper_consistency(self):
+        """Test is_blocked helper initializes ticket_map automatically."""
+        t1 = Ticket(id="T1", title="Dep", body="", status="open", plan_name="p")
+        t2 = Ticket(id="T2", title="Blocked", body="", status="open", deps=["T1"], plan_name="p")
+        
+        classifier = BoardClassifier([t1, t2])
+        # Don't call classify() - test that is_blocked initializes ticket_map
+        assert classifier.is_blocked(t2) is True
+        assert classifier.is_blocked(t1) is False
+
+    def test_get_ready_tickets_helper_consistency(self):
+        """Test get_ready_tickets helper initializes ticket_map automatically."""
+        t1 = Ticket(id="T1", title="Ready", body="", status="open", deps=[], plan_name="p")
+        t2 = Ticket(id="T2", title="Blocked", body="", status="open", deps=["T1"], plan_name="p")
+        t3 = Ticket(id="T3", title="In Progress", body="", status="in_progress", deps=[], plan_name="p")
+        t4 = Ticket(id="T4", title="Closed", body="", status="closed", deps=[], plan_name="p")
+        
+        classifier = BoardClassifier([t1, t2, t3, t4])
+        # Don't call classify() - test that get_ready_tickets initializes ticket_map
+        ready = classifier.get_ready_tickets()
+        
+        # Only t1 is ready (open, no blockers, not in_progress)
+        assert len(ready) == 1
+        assert ready[0].id == "T1"
     
     def test_classify_in_progress(self):
         """Test that in_progress tickets go to IN_PROGRESS column."""
