@@ -11,7 +11,7 @@ A reusable pi package for tk-driven planning + ticket implementation workflows.
   - `/tk-implement`
 - Bootstrap command extension: `/tk-bootstrap`
 - Subagent templates under `assets/agents/`:
-  - context-builder, scout, researcher, librarian, planner, worker, reviewer, tester, fixer
+  - context-builder, scout, context-merger, researcher, librarian, planner, worker, reviewer, tester, fixer
   - documenter, refactorer, simplifier, tk-closer, ticketizer
 - Reusable chain presets under `assets/chains/`:
   - `tk-brainstorm.chain.md`
@@ -32,7 +32,7 @@ Implementation presets include a final `tk-closer` step for commit + `tk add-not
 pi install git:github.com/legout/pi-tk-flow
 
 # or pin a release tag
-pi install git:github.com/legout/pi-tk-flow@v0.1.5
+pi install git:github.com/legout/pi-tk-flow@v0.2.2
 ```
 
 ### pi-subagents prerequisite

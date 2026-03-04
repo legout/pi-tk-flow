@@ -4,7 +4,7 @@ description: Analyze and implement any tk ticket with main-agent path selection
 
 Implement ticket from `$@` (parsed into `<TICKET_ID>` + flags).
 
-**Key principle:** The main agent (you) analyzes `anchor-context.md` after the scout/context-builder chain and decides which implementation path to use. All anchoring (ticket, lessons, knowledge) is handled by context-builder.
+**Key principle:** The main agent (you) analyzes `anchor-context.md` after the fast anchoring phase (pre-seeded scout/context + merge) and decides which implementation path to use. Context-builder performs ticket/lessons/knowledge anchoring; context-merger appends scout code context.
 
 ## Parse Input and Runtime Flags
 
@@ -29,6 +29,7 @@ Parsing rules:
 - Baseline preflight before any run:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
   - Required baseline agents: `scout`, `context-builder`, `worker`, `reviewer`, `tk-closer`
+  - Optional optimization agent: `context-merger` (if missing, use fallback chain in section 1e).
 - Path-specific preflight before executing chosen path:
   - Path A: baseline + `fixer`
   - Path B: baseline + `planner`, `tester`, `fixer`
@@ -51,9 +52,122 @@ Parsing rules:
 - `includeProgress: false`
 - `maxOutput: { "bytes": 200000, "lines": 5000 }`
 
-## 1. Scout + Context-Builder (Anchoring Chain)
+## 1. Fast Anchoring (Pre-seeded Parallel Scout + Context-Builder)
 
-Ensure `.subagent-runs/<TICKET_ID>` directory exists, then run:
+**Optimizations applied:**
+- Pre-seed both agents with ticket context (no blind exploration)
+- Run scout + context-builder in parallel
+- Reuse cached scout context if codebase unchanged
+- Scout follows dependency chains, not just direct matches
+- Batched file reading within scout
+
+### 1a. Quick Ticket Analysis (Main Agent - 15 seconds)
+
+YOU extract seeding context from the ticket:
+
+```bash
+# Ensure run directory exists
+mkdir -p .subagent-runs/<TICKET_ID>
+
+# Find ticket file
+TICKET_FILE=$(find . -name "<TICKET_ID>.md" -type f 2>/dev/null | head -1)
+if [ -z "$TICKET_FILE" ]; then
+  echo "ERROR: ticket file not found for <TICKET_ID>"
+  # STOP here and report missing ticket file to user.
+fi
+```
+
+Read the ticket file and extract:
+- **Primary terms**: function names, class names, module names mentioned
+- **Secondary terms**: concepts, patterns, technologies referenced
+- **File hints**: any explicit file paths mentioned
+- **Change scope**: which files/directories likely need modification
+
+Write this to `.subagent-runs/<TICKET_ID>/ticket-seed.json`:
+```json
+{
+  "ticket_id": "<TICKET_ID>",
+  "primary_terms": ["funcName", "ClassName", "module_name"],
+  "secondary_terms": ["authentication", "jwt", "middleware"],
+  "file_hints": ["src/auth/", "tests/test_auth.py"],
+  "change_scope": "auth module and related tests",
+  "ticket_summary": "One-line summary of what needs to be done"
+}
+```
+
+### 1b. Check for Cached Scout Context
+
+Check if we can reuse previous scout output:
+
+```bash
+# Check if scout context exists from a previous run
+SCOUT_CACHE=".subagent-runs/<TICKET_ID>/scout-context.md"
+CACHE_META=".subagent-runs/<TICKET_ID>/.scout-git-hash"
+CACHE_VALID=false
+
+if [ -f "$SCOUT_CACHE" ] && [ -f "$CACHE_META" ]; then
+  CURRENT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "no-git")
+  CACHE_HASH=$(cat "$CACHE_META" 2>/dev/null || echo "")
+
+  if [ "$CURRENT_HASH" = "$CACHE_HASH" ]; then
+    CACHE_VALID=true
+  elif ! git cat-file -e "$CACHE_HASH^{commit}" 2>/dev/null; then
+    # Cache points to unknown history (rebased/pruned). Do a fresh scout.
+    CACHE_VALID=false
+  else
+    # "Significant" change check: reuse cache only when changes do not touch
+    # (a) previously scouted files and (b) ticket seed scope hints.
+    CHANGED_FILES=$(git diff --name-only "$CACHE_HASH"..HEAD 2>/dev/null || true)
+
+    if [ -n "$CHANGED_FILES" ]; then
+      # First, invalidate cache if any changed file was part of previously scouted context.
+      RELEVANT_CHANGE=false
+      while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        if grep -F -q -- "\`$f\`" "$SCOUT_CACHE" || grep -F -q -- "$f" "$SCOUT_CACHE"; then
+          RELEVANT_CHANGE=true
+          break
+        fi
+      done <<< "$CHANGED_FILES"
+
+      # Secondary check using ticket seed scope hints.
+      SCOPE_REGEX=$(python3 - <<'PY'
+import json, re
+from pathlib import Path
+p = Path('.subagent-runs/<TICKET_ID>/ticket-seed.json')
+if not p.exists():
+    print('.*')
+    raise SystemExit
+seed = json.loads(p.read_text())
+parts = []
+for h in seed.get('file_hints', []):
+    if h:
+        parts.append(re.escape(h.strip('/')))
+for t in seed.get('primary_terms', []):
+    if t:
+        parts.append(re.escape(t))
+print('|'.join(parts) if parts else '.*')
+PY
+)
+
+      if [ "$RELEVANT_CHANGE" = true ] || echo "$CHANGED_FILES" | grep -E -q -- "$SCOPE_REGEX"; then
+        CACHE_VALID=false
+      else
+        CACHE_VALID=true
+      fi
+    else
+      # Different commit hash but no file changes in range; reuse cache.
+      CACHE_VALID=true
+    fi
+  fi
+fi
+```
+
+If `CACHE_VALID=true`, skip the scout run and reuse existing `scout-context.md`; run context-builder and merge with cached scout context.
+
+### 1c. Parallel Scout + Context-Builder (Pre-seeded, when cache is invalid)
+
+Use this when `CACHE_VALID=false`. Both agents receive the ticket seed for targeted work:
 
 ```json
 {
@@ -66,21 +180,147 @@ Ensure `.subagent-runs/<TICKET_ID>` directory exists, then run:
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
     {
-      "agent": "scout",
-      "task": "Scout codebase context for ticket <TICKET_ID>. Focus on relevant files, patterns, tests, and architecture.",
-      "output": "scout-context.md"
+      "parallel": [
+        {
+          "agent": "scout",
+          "task": "Scout codebase for ticket <TICKET_ID>. SEED CONTEXT in ticket-seed.json - use it to target your search.\n\nMUST DO:\n1. Read ticket-seed.json first for targeting hints\n2. Find files matching primary_terms using grep/find\n3. Read those files AND their imports/dependencies (follow import statements)\n4. Read related test files\n5. Use batched/rapid read calls when fetching multiple files\n\nOUTPUT: scout-context.md with:\n- Files Retrieved (with line ranges and WHY relevant)\n- Key Code (actual snippets of types/functions)\n- Dependency Graph (what imports what)\n- Architecture Notes\n- Start Here recommendation",
+          "reads": ["ticket-seed.json"],
+          "output": "scout-context.md"
+        },
+        {
+          "agent": "context-builder",
+          "task": "Build implementation context for ticket <TICKET_ID>. SEED CONTEXT in ticket-seed.json - use it for context.\n\nMUST DO:\n1. Read ticket-seed.json for ticket summary\n2. Read full ticket file for details\n3. Read .tf/AGENTS.md for lessons learned\n4. Read relevant .tf/knowledge/** files\n\nOUTPUT: anchor-context-base.md with:\n- Ticket Summary (what + why)\n- Complexity Assessment (simple/medium/complex)\n- Research Gaps (if any)\n- External Libraries Involved\n- Testing Requirements\n- Recommended Path (A/B/C)\n\nNOTE: scout-context.md may not be available yet - work independently.",
+          "reads": ["ticket-seed.json"],
+          "output": "anchor-context-base.md"
+        }
+      ],
+      "concurrency": 2,
+      "failFast": false
     },
     {
-      "agent": "context-builder",
-      "task": "Build re-anchored implementation context for ticket <TICKET_ID>. You MUST: 1) Read the ticket file (find with `find . -name \"<TICKET_ID>.md\"`), 2) Read `.tf/AGENTS.md` for lessons learned, 3) Read relevant `.tf/knowledge/**` files for cached research, 4) Synthesize with scout output. Output a structured `anchor-context.md` with: ticket summary, complexity assessment (simple/medium/complex), research gaps (if any), external libraries involved, testing requirements, and recommended implementation path (A/B/C).",
-      "reads": ["scout-context.md"],
+      "agent": "context-merger",
+      "task": "Merge scout and context-builder outputs into final anchor-context.md.\n\nRead both scout-context.md and anchor-context-base.md.\nIf scout found relevant code patterns/dependencies, ADD them under a new 'Code Context' section.\nKeep all existing sections from anchor-context-base.md.\nWrite the merged result to anchor-context.md.",
+      "reads": ["scout-context.md", "anchor-context-base.md"],
       "output": "anchor-context.md"
     }
   ]
 }
 ```
 
-The context-builder handles all anchoring: ticket reading, lessons from `.tf/AGENTS.md`, and cached knowledge from `.tf/knowledge/`.
+After completion, store git hash for cache validation:
+```bash
+git rev-parse HEAD > .subagent-runs/<TICKET_ID>/.scout-git-hash 2>/dev/null || true
+```
+
+### 1d. Cache-Hit Path (Reuse scout output)
+
+Use this when `CACHE_VALID=true`:
+
+```json
+{
+  "agentScope": "<AGENT_SCOPE>",
+  "chainDir": ".subagent-runs/<TICKET_ID>",
+  "clarify": false,
+  "async": false,
+  "artifacts": true,
+  "includeProgress": false,
+  "maxOutput": { "bytes": 200000, "lines": 5000 },
+  "chain": [
+    {
+      "agent": "context-builder",
+      "task": "Build implementation context for ticket <TICKET_ID> using ticket-seed.json and latest ticket/knowledge files.",
+      "reads": ["ticket-seed.json"],
+      "output": "anchor-context-base.md"
+    },
+    {
+      "agent": "context-merger",
+      "task": "Merge cached scout-context.md with fresh anchor-context-base.md into final anchor-context.md.",
+      "reads": ["scout-context.md", "anchor-context-base.md"],
+      "output": "anchor-context.md"
+    }
+  ]
+}
+```
+
+### 1e. If No context-merger Agent Exists
+
+If `context-merger` is not available, use this fallback chain:
+
+```json
+{
+  "agentScope": "<AGENT_SCOPE>",
+  "chainDir": ".subagent-runs/<TICKET_ID>",
+  "clarify": false,
+  "async": false,
+  "artifacts": true,
+  "includeProgress": false,
+  "maxOutput": { "bytes": 200000, "lines": 5000 },
+  "chain": [
+    {
+      "parallel": [
+        {
+          "agent": "scout",
+          "task": "Scout codebase for ticket <TICKET_ID>. Read ticket-seed.json FIRST for targeting.\n\nMUST:\n1. grep/find files matching primary_terms\n2. Read matched files AND their dependencies (follow imports)\n3. Read related test files\n4. Use batched/rapid read calls for multiple files\n\nOutput: scout-context.md",
+          "reads": ["ticket-seed.json"],
+          "output": "scout-context.md"
+        },
+        {
+          "agent": "context-builder",
+          "task": "Build anchor context for <TICKET_ID>. Read ticket-seed.json, full ticket, .tf/AGENTS.md, .tf/knowledge/**.\n\nAfter parallel phase, you'll receive scout-context.md to incorporate.\n\nOutput: anchor-context-draft.md with ticket summary, complexity, research gaps, path recommendation.",
+          "reads": ["ticket-seed.json"],
+          "output": "anchor-context-draft.md"
+        }
+      ],
+      "concurrency": 2,
+      "failFast": false
+    },
+    {
+      "agent": "context-builder",
+      "task": "Finalize anchor-context.md by merging scout findings.\n\nRead anchor-context-draft.md and scout-context.md.\nAdd a 'Code Context' section with scout's findings to the draft.\nWrite final merged result to anchor-context.md.",
+      "reads": ["anchor-context-draft.md", "scout-context.md"],
+      "output": "anchor-context.md"
+    }
+  ]
+}
+```
+
+After successful fallback run that included a fresh scout, store git hash for cache validation:
+```bash
+git rev-parse HEAD > .subagent-runs/<TICKET_ID>/.scout-git-hash 2>/dev/null || true
+```
+
+If `context-merger` is missing **and** `CACHE_VALID=true`, use this cache-hit fallback:
+
+```json
+{
+  "agentScope": "<AGENT_SCOPE>",
+  "chainDir": ".subagent-runs/<TICKET_ID>",
+  "clarify": false,
+  "async": false,
+  "artifacts": true,
+  "includeProgress": false,
+  "maxOutput": { "bytes": 200000, "lines": 5000 },
+  "chain": [
+    {
+      "agent": "context-builder",
+      "task": "Build anchor context for <TICKET_ID> from ticket-seed.json, ticket file, .tf/AGENTS.md, and .tf/knowledge/**.",
+      "reads": ["ticket-seed.json"],
+      "output": "anchor-context-draft.md"
+    },
+    {
+      "agent": "context-builder",
+      "task": "Finalize anchor-context.md by merging cached scout findings. Read anchor-context-draft.md and scout-context.md, then add a Code Context section and write anchor-context.md.",
+      "reads": ["anchor-context-draft.md", "scout-context.md"],
+      "output": "anchor-context.md"
+    }
+  ]
+}
+```
+
+**Time saved:**
+- Pre-seeding: Scout doesn't wander, targets specific files (~50% faster)
+- Parallel: Scout + context-builder run simultaneously (~40% faster)
+- Caching: Skip scout entirely if unchanged (~100% faster for re-runs)
 
 ## 2. YOU Decide the Implementation Path
 
@@ -92,7 +332,7 @@ Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 | **Research needed?** | No (existing knowledge sufficient) | Maybe (check knowledge first) | Yes (new domain/libraries) |
 | **LOC estimate** | <50 | 50-200 | >200 |
 | **Validation** | Review only | Review + Test (parallel) | Review + Test (parallel) |
-| **Chain steps** | scout→context→worker→reviewer→fixer→reviewer(re-check)→closer | scout→context→planner→worker→**parallel review+test**→fixer→**parallel re-check**→closer | scout→context→**parallel research**→planner→worker→**parallel review+test**→fixer→**parallel re-check**→closer |
+| **Chain steps** | seed→(scout∥context)→merge→worker→reviewer→fixer→reviewer(re-check)→closer | seed→(scout∥context)→merge→planner→worker→**parallel review+test**→fixer→**parallel re-check**→closer | seed→(scout∥context)→merge→**parallel research**→planner→worker→**parallel review+test**→fixer→**parallel re-check**→closer |
 
 ### Decision Rules
 

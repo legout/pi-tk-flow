@@ -72,12 +72,13 @@ Preserve local edits (no overwrite when content differs):
 ### 3) Implement
 
 ```bash
-/tk-implement <ticket-id>         # main agent decides path after analysis
-/tk-implement <ticket-id> --async # background execution
+/tk-implement <ticket-id>          # main agent decides path after analysis
+/tk-implement <ticket-id> --async  # background execution
+/tk-implement <ticket-id> --clarify # open chain clarification TUI
 ```
 
 **How it works:**
-1. Always runs `scout` → `context-builder` first
+1. Builds ticket seed context, then runs fast anchoring (`scout` + `context-builder` in parallel, merged; scout cache reused when valid)
 2. **YOU (the main agent)** analyze the ticket and anchor context
 3. Choose the path:
    - **Path A (Minimal)**: Simple config/docs/fixes. No research. Review only.
