@@ -83,6 +83,16 @@ pi install npm:pi-prompt-template-model
 
 > **Note:** This mapping table is the **canonical source** for prompt and documentation alignment. When updating model assignments, update this table first.
 
+**Model Precedence (highest to lowest priority):**
+
+1. Subagent tool call `model` parameter (runtime override)
+2. Agent definition frontmatter `model`
+3. Main loop model (prompt frontmatter via extension)
+4. Project defaults (`.pi/settings.json`)
+5. Global defaults (`~/.pi/agent/settings.json`)
+
+For full details on model selection behavior and subagent handling, see [`.tf/knowledge/topics/model-configuration.md`](.tf/knowledge/topics/model-configuration.md).
+
 Commands continue to execute normally when the extension is not installed—no error or warning is emitted.
 
 ## Bootstrap templates

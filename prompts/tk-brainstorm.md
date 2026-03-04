@@ -1,6 +1,7 @@
 ---
 description: Brainstorm a new feature/refactor/simplification and produce a decision-ready design brief before planning
 model: claude-sonnet-4-20250514
+thinking: high
 ---
 
 Brainstorm from `$@`.
