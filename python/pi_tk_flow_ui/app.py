@@ -399,10 +399,18 @@ class TicketBoard(Static):
         for column, list_id in column_map.items():
             list_view = self.query_one(f"#{list_id}", ListView)
             list_view.clear()
-            
+
             tickets = self.board_view.get_by_column(column)
             tickets = self._apply_filters(tickets)
-            
+
+            # Show empty state if no tickets after filtering
+            if not tickets:
+                list_view.append(ListItem(
+                    Label("[dim]No tickets[/dim]"),
+                    disabled=True
+                ))
+                continue
+
             for ct in tickets:
                 title = ct.title[:35] + "..." if len(ct.title) > 35 else ct.title
                 priority_indicator = f"[P{ct.ticket.priority}] " if ct.ticket.priority else ""
