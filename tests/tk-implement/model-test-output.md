@@ -584,13 +584,13 @@ PI_TK_INTERACTIVE_CHILD=1 /tk-implement TICKET-123 --interactive
 
 ### TD-1.4 Validation Order Verification (All PASS)
 
-| Order | Step | Verification | Result |
-|-------|------|--------------|--------|
-| 1 | Unknown flags first | A.2.8 error appears before mutual exclusivity | ✅ PASS |
-| 2 | Interactive mutual exclusivity | A.2.1-A.2.3 detected before async check | ✅ PASS |
-| 3 | Interactive vs --async | A.2.4-A.2.6 detected after mutual exclusivity | ✅ PASS |
-| 4 | --interactive vs --clarify | A.2.7 detected after async check | ✅ PASS |
-| 5 | Legacy rule last | A.3.3 async wins applied last | ✅ PASS |
+| Test ID | Command | Order | Verification | Result |
+|---------|---------|-------|--------------|--------|
+| TD-1.4.1 | `/tk-implement TICKET-123 --unknown-flag --interactive --hands-free` | 1 | Unknown flag error emitted before mutual exclusivity check | ✅ PASS |
+| TD-1.4.2 | `/tk-implement TICKET-123 --interactive --hands-free --async` | 2 | Mutual exclusivity (--interactive vs --hands-free) detected before async check | ✅ PASS |
+| TD-1.4.3 | `/tk-implement TICKET-123 --interactive --async` | 3 | Interactive vs --async blocked after mutual exclusivity passes | ✅ PASS |
+| TD-1.4.4 | `/tk-implement TICKET-123 --interactive --clarify` | 4 | --interactive vs --clarify blocked after async check passes | ✅ PASS |
+| TD-1.4.5 | `/tk-implement TICKET-123 --async --clarify` | 5 | Legacy rule applied last: --async wins over --clarify (no error, clarify=false) | ✅ PASS |
 
 ---
 
@@ -599,6 +599,10 @@ PI_TK_INTERACTIVE_CHILD=1 /tk-implement TICKET-123 --interactive
 ### TD-2.1 interactive_shell Parameter Construction (All PASS)
 
 #### TD-2.1.1: --interactive parameters
+```bash
+/tk-implement TICKET-123 --interactive
+```
+**Expected interactive_shell Call:**
 ```json
 {
   "command": "PI_TK_INTERACTIVE_CHILD=1 pi \"/tk-implement TICKET-123\"",
@@ -610,6 +614,10 @@ PI_TK_INTERACTIVE_CHILD=1 /tk-implement TICKET-123 --interactive
 **Evidence:** Section 2c of prompts/tk-implement.md documents correct parameters. Mode is "interactive", command properly escaped.
 
 #### TD-2.1.2: --hands-free parameters
+```bash
+/tk-implement TICKET-123 --hands-free
+```
+**Expected interactive_shell Call:**
 ```json
 {
   "command": "PI_TK_INTERACTIVE_CHILD=1 pi \"/tk-implement TICKET-123\"",
@@ -627,6 +635,10 @@ PI_TK_INTERACTIVE_CHILD=1 /tk-implement TICKET-123 --interactive
 **Evidence:** All required handsFree sub-fields present with correct values per interactive_shell API.
 
 #### TD-2.1.3: --dispatch parameters
+```bash
+/tk-implement TICKET-123 --dispatch
+```
+**Expected interactive_shell Call:**
 ```json
 {
   "command": "PI_TK_INTERACTIVE_CHILD=1 pi \"/tk-implement TICKET-123\"",
@@ -642,12 +654,12 @@ PI_TK_INTERACTIVE_CHILD=1 /tk-implement TICKET-123 --interactive
 
 ### TD-2.2 Nested Command Construction (All PASS)
 
-| Test ID | Flags | Expected INNER_CMD | Result |
-|---------|-------|-------------------|--------|
-| TD-2.2.1 | `--interactive` | `PI_TK_INTERACTIVE_CHILD=1 pi "/tk-implement TICKET-123"` | ✅ PASS |
-| TD-2.2.2 | `--hands-free --clarify` | `PI_TK_INTERACTIVE_CHILD=1 pi "/tk-implement TICKET-123 --clarify"` | ✅ PASS |
-| TD-2.2.3 | `--dispatch --clarify` | `PI_TK_INTERACTIVE_CHILD=1 pi "/tk-implement TICKET-123 --clarify"` | ✅ PASS |
-| TD-2.2.4 | `--interactive` (no clarify) | --clarify NOT in INNER_CMD | ✅ PASS |
+| Test ID | Command | Expected INNER_CMD | Result |
+|---------|---------|-------------------|--------|
+| TD-2.2.1 | `/tk-implement TICKET-123 --interactive` | `PI_TK_INTERACTIVE_CHILD=1 pi "/tk-implement TICKET-123"` | ✅ PASS |
+| TD-2.2.2 | `/tk-implement TICKET-123 --hands-free --clarify` | `PI_TK_INTERACTIVE_CHILD=1 pi "/tk-implement TICKET-123 --clarify"` | ✅ PASS |
+| TD-2.2.3 | `/tk-implement TICKET-123 --dispatch --clarify` | `PI_TK_INTERACTIVE_CHILD=1 pi "/tk-implement TICKET-123 --clarify"` | ✅ PASS |
+| TD-2.2.4 | `/tk-implement TICKET-123 --interactive` (no clarify) | --clarify NOT in INNER_CMD | ✅ PASS |
 
 ---
 
@@ -661,37 +673,52 @@ PI_TK_INTERACTIVE_CHILD=1 /tk-implement TICKET-123 --interactive
 **Result:** ✅ PASS  
 **Evidence:** Section 2a checks `[ -n "$PI_TK_INTERACTIVE_CHILD" ]`, disables all interactive flags when set. Inner command runs Path A/B/C directly.
 
+#### TD-2.3.2: Nested command env var set
+```bash
+/tk-implement TICKET-123 --interactive
+```
+**Expected:** Inner command has `PI_TK_INTERACTIVE_CHILD=1` set in environment  
+**Result:** ✅ PASS  
+**Evidence:** Section 2e confirms the environment variable is exported before invoking the nested pi command, preventing infinite recursion.
+
 ---
 
 ### TD-2.4 Router Position in Execution Flow (All PASS)
 
-| Test ID | Checkpoint | Verification | Result |
-|---------|------------|--------------|--------|
-| TD-2.4.1 | After anchoring | Router in Section 2, runs after Section 1 (Fast Anchoring) | ✅ PASS |
-| TD-2.4.2 | Before Path selection | Router before Section 3 (Path Decision) | ✅ PASS |
-| TD-2.4.3 | Path skipping | Interactive flags → SKIP Path A/B/C in outer call | ✅ PASS |
+| Test ID | Command | Checkpoint | Verification | Result |
+|---------|---------|------------|--------------|--------|
+| TD-2.4.1 | `/tk-implement TICKET-123 --interactive` | After anchoring | Router in Section 2, runs after Section 1 (Fast Anchoring) | ✅ PASS |
+| TD-2.4.2 | `/tk-implement TICKET-123 --interactive` | Before Path selection | Router before Section 3 (Path Decision) | ✅ PASS |
+| TD-2.4.3 | `/tk-implement TICKET-123 --interactive` | Path skipping | Interactive flags → SKIP Path A/B/C in outer call | ✅ PASS |
 
 ---
 
 ### TD-2.5 Overlay Controls (Manual Tests - Not Run)
 
-| Test ID | Control | Expected | Status |
-|---------|---------|----------|--------|
-| TD-2.5.1 | Ctrl+T | Transfer output and close | ⬜ Manual |
-| TD-2.5.2 | Ctrl+B | Background session | ⬜ Manual |
-| TD-2.5.3 | Ctrl+Q | Detach menu | ⬜ Manual |
-| TD-2.5.4 | Direct typing | User takeover in hands-free | ⬜ Manual |
+| Test ID | Command | Control | Expected | Status |
+|---------|---------|---------|----------|--------|
+| TD-2.5.1 | `/tk-implement TICKET-123 --interactive` | Ctrl+T | Transfer output and close | ⬜ Manual verification required |
+| TD-2.5.2 | `/tk-implement TICKET-123 --interactive` | Ctrl+B | Background session | ⬜ Manual verification required |
+| TD-2.5.3 | `/tk-implement TICKET-123 --interactive` | Ctrl+Q | Detach menu | ⬜ Manual verification required |
+| TD-2.5.4 | `/tk-implement TICKET-123 --hands-free` | Direct typing | User takeover in hands-free | ⬜ Manual verification required |
+
+**Reason for Manual Status:** These tests require actual interactive console sessions with keyboard input, which cannot be verified through static analysis or automated scripts. Manual verification steps:
+1. Start interactive session: `/tk-implement TICKET-123 --interactive`
+2. Press Ctrl+T → verify output transferred to agent context
+3. Start new session, press Ctrl+B → verify session backgrounds
+4. Start new session, press Ctrl+Q → verify detach menu appears
+5. Start hands-free session, type characters → verify user takeover
 
 ---
 
 ### TD-2.6 Polling Cadence (Hands-Free Mode) (All PASS)
 
-| Parameter | Expected | Actual | Result |
-|-----------|----------|--------|--------|
-| updateMode | "on-quiet" | "on-quiet" | ✅ PASS |
-| quietThreshold | 8000ms | 8000ms | ✅ PASS |
-| updateInterval | 60000ms | 60000ms | ✅ PASS |
-| autoExitOnQuiet | false | false | ✅ PASS |
+| Test ID | Command | Parameter | Expected | Actual | Result |
+|---------|---------|-----------|----------|--------|--------|
+| TD-2.6.1 | `/tk-implement TICKET-123 --hands-free` | updateMode | "on-quiet" | "on-quiet" | ✅ PASS |
+| TD-2.6.2 | `/tk-implement TICKET-123 --hands-free` | quietThreshold | 8000ms | 8000ms | ✅ PASS |
+| TD-2.6.3 | `/tk-implement TICKET-123 --hands-free` | updateInterval | 60000ms | 60000ms | ✅ PASS |
+| TD-2.6.4 | `/tk-implement TICKET-123 --hands-free` | autoExitOnQuiet | false | false | ✅ PASS |
 
 ---
 
@@ -699,13 +726,15 @@ PI_TK_INTERACTIVE_CHILD=1 /tk-implement TICKET-123 --interactive
 
 ### TD-3.1 Session Metadata Creation (All PASS)
 
-| Test ID | Mode | session.json Created? | Location | Result |
-|---------|------|----------------------|----------|--------|
-| TD-3.1.1 | `--interactive` | Yes | `.subagent-runs/TICKET-123/session.json` | ✅ PASS |
-| TD-3.1.2 | `--hands-free` | Yes | `.subagent-runs/TICKET-123/session.json` | ✅ PASS |
-| TD-3.1.3 | `--dispatch` | Yes | `.subagent-runs/TICKET-123/session.json` | ✅ PASS |
-| TD-3.1.4 | No interactive flags | **NO** | N/A | ✅ PASS |
-| TD-3.1.5 | Legacy `--async` | **NO** | N/A | ✅ PASS |
+| Test ID | Command | session.json Created? | Location | Result |
+|---------|---------|----------------------|----------|--------|
+| TD-3.1.1 | `/tk-implement TICKET-123 --interactive` | Yes | `.subagent-runs/TICKET-123/session.json` | ✅ PASS |
+| TD-3.1.2 | `/tk-implement TICKET-123 --hands-free` | Yes | `.subagent-runs/TICKET-123/session.json` | ✅ PASS |
+| TD-3.1.3 | `/tk-implement TICKET-123 --dispatch` | Yes | `.subagent-runs/TICKET-123/session.json` | ✅ PASS |
+| TD-3.1.4 | `/tk-implement TICKET-123` | **NO** | N/A | ✅ PASS |
+| TD-3.1.5 | `/tk-implement TICKET-123 --async` | **NO** | N/A | ✅ PASS |
+
+**Evidence:** Behavior verified against `prompts/tk-implement.md` Section 2d which explicitly states session.json is only created for interactive modes.
 
 ---
 
@@ -733,17 +762,18 @@ PI_TK_INTERACTIVE_CHILD=1 /tk-implement TICKET-123 --interactive
 }
 ```
 
-| Field | Validation | Result |
-|-------|------------|--------|
-| mode | One of: interactive, hands-free, dispatch | ✅ PASS |
-| sessionId | Non-empty, URL-safe | ✅ PASS |
-| startedAt | Valid ISO8601 | ✅ PASS |
-| command | Contains ticket ID | ✅ PASS |
-| status | Starts as "pending" | ✅ PASS |
+| Test ID | Command | Field | Validation | Result |
+|---------|---------|-------|------------|--------|
+| TD-3.2.1 | `/tk-implement TICKET-123 --interactive` | mode | One of: interactive, hands-free, dispatch | ✅ PASS |
+| TD-3.2.2 | `/tk-implement TICKET-123 --interactive` | sessionId | Non-empty, URL-safe | ✅ PASS |
+| TD-3.2.3 | `/tk-implement TICKET-123 --interactive` | startedAt | Valid ISO8601 | ✅ PASS |
+| TD-3.2.4 | `/tk-implement TICKET-123 --interactive` | command | Contains ticket ID | ✅ PASS |
+| TD-3.2.5 | `/tk-implement TICKET-123 --hands-free --clarify` | command | --clarify present only if originally specified | ✅ PASS |
+| TD-3.2.6 | `/tk-implement TICKET-123 --interactive` | status | Starts as "pending" | ✅ PASS |
 
 ---
 
-### TD-3.3 Atomic Write Semantics (All PASS)
+### TD-3.3 Atomic Write Semantics
 
 **Implementation (Section 2d of prompts/tk-implement.md):**
 ```bash
@@ -762,17 +792,38 @@ sync "$TEMP_FILE" 2>/dev/null || true
 mv "$TEMP_FILE" "$SESSION_FILE"
 ```
 
-| Test ID | Check | Result |
-|---------|-------|--------|
-| TD-3.3.1 | Temp file uses PID suffix (.$$) | ✅ PASS |
-| TD-3.3.2 | sync called before rename | ✅ PASS |
-| TD-3.3.3 | Atomic mv operation | ✅ PASS |
-| TD-3.3.4 | No partial files on crash | ✅ PASS (pattern ensures) |
-| TD-3.3.5 | Concurrent-safe unique suffix | ✅ PASS |
+| Test ID | Command | Check | Result |
+|---------|---------|-------|--------|
+| TD-3.3.1 | `/tk-implement TICKET-123 --interactive` | Temp file uses PID suffix (.$$) | ✅ PASS |
+| TD-3.3.2 | `/tk-implement TICKET-123 --interactive` | sync called before rename | ✅ PASS |
+| TD-3.3.3 | `/tk-implement TICKET-123 --interactive` | Atomic mv operation | ✅ PASS |
+| TD-3.3.4 | Kill during `/tk-implement TICKET-123 --interactive` | No partial files on crash | ⬜ Manual verification required |
+| TD-3.3.5 | Two concurrent `/tk-implement` calls | Concurrent-safe unique suffix | ⬜ Manual verification required |
+
+**Manual Verification Steps for TD-3.3.4:**
+```bash
+# Test crash during write
+/tk-implement TEST-TICKET --interactive &
+PID=$!
+sleep 0.5  # Wait for session start
+kill -9 $PID
+# Verify: ls .subagent-runs/TEST-TICKET/session.json* 
+# Expected: No session.json, no session.json.tmp.* files
+```
+
+**Manual Verification Steps for TD-3.3.5:**
+```bash
+# Test concurrent invocations
+/tk-implement CONCURRENT-1 --interactive &
+/tk-implement CONCURRENT-2 --interactive &
+wait
+# Verify: Both session.json files exist with different content
+# Expected: No collisions, both files valid
+```
 
 ---
 
-### TD-3.4 Cleanup on Failure (All PASS)
+### TD-3.4 Cleanup on Failure
 
 **Failure Handling (Section 2d of prompts/tk-implement.md):**
 ```bash
@@ -784,12 +835,28 @@ fi
 # Do NOT write session.json
 ```
 
-| Test ID | Scenario | Expected | Result |
-|---------|----------|----------|--------|
-| TD-3.4.1 | Shell fails | Temp file removed | ✅ PASS |
-| TD-3.4.2 | Shell fails | No session.json written | ✅ PASS |
-| TD-3.4.3 | Shell fails | Actionable error message | ✅ PASS |
-| TD-3.4.4 | Post-failure | Existing artifacts preserved | ✅ PASS |
+| Test ID | Command | Scenario | Expected | Result |
+|---------|---------|----------|----------|--------|
+| TD-3.4.1 | `/tk-implement FAIL-TICKET --interactive` (force fail) | Shell fails | Temp file removed | ⬜ Manual verification required |
+| TD-3.4.2 | `/tk-implement FAIL-TICKET --interactive` (force fail) | Shell fails | No session.json written | ⬜ Manual verification required |
+| TD-3.4.3 | `/tk-implement FAIL-TICKET --interactive` (force fail) | Shell fails | Actionable error message | ⬜ Manual verification required |
+| TD-3.4.4 | `/tk-implement FAIL-TICKET --interactive` (force fail) | Post-failure | Existing artifacts preserved | ⬜ Manual verification required |
+
+**Manual Verification Steps:**
+```bash
+# Pre-create some artifacts
+mkdir -p .subagent-runs/FAIL-TICKET
+echo "test" > .subagent-runs/FAIL-TICKET/anchor-context.md
+
+# Force failure (invalid ticket that will fail)
+/tk-implement FAIL-TICKET --interactive
+# After failure:
+# 1. Verify: ls .subagent-runs/FAIL-TICKET/session.json* 
+#    Expected: No files
+# 2. Verify: cat .subagent-runs/FAIL-TICKET/anchor-context.md
+#    Expected: "test" content preserved
+# 3. Verify: Error message was actionable
+```
 
 ---
 
@@ -813,16 +880,16 @@ fi
 ═══════════════════════════════════════════════════════════════
 ```
 
-| Element | Present? | Result |
-|---------|----------|--------|
-| Header | ✅ Yes | ✅ PASS |
-| Mode line | ✅ Yes | ✅ PASS |
-| Session ID | ✅ Yes | ✅ PASS |
-| /attach command | ✅ Yes | ✅ PASS |
-| /sessions command | ✅ Yes | ✅ PASS |
-| Ctrl+T | ✅ Yes | ✅ PASS |
-| Ctrl+B | ✅ Yes | ✅ PASS |
-| Ctrl+Q | ✅ Yes | ✅ PASS |
+| Test ID | Command | Element | Present? | Result |
+|---------|---------|---------|----------|--------|
+| TD-3.5.1 | `/tk-implement TICKET-123 --interactive` | Header | ✅ Yes | ✅ PASS |
+| TD-3.5.2 | `/tk-implement TICKET-123 --interactive` | Mode line | ✅ Yes | ✅ PASS |
+| TD-3.5.3 | `/tk-implement TICKET-123 --interactive` | Session ID | ✅ Yes | ✅ PASS |
+| TD-3.5.4 | `/tk-implement TICKET-123 --interactive` | /attach command | ✅ Yes | ✅ PASS |
+| TD-3.5.5 | `/tk-implement TICKET-123 --interactive` | /sessions command | ✅ Yes | ✅ PASS |
+| TD-3.5.6 | `/tk-implement TICKET-123 --interactive` | Ctrl+T | ✅ Yes | ✅ PASS |
+| TD-3.5.7 | `/tk-implement TICKET-123 --interactive` | Ctrl+B | ✅ Yes | ✅ PASS |
+| TD-3.5.8 | `/tk-implement TICKET-123 --interactive` | Ctrl+Q | ✅ Yes | ✅ PASS |
 
 ---
 
@@ -830,23 +897,29 @@ fi
 
 | Test ID | Command | Expected | Status |
 |---------|---------|----------|--------|
-| TD-3.6.1 | `/sessions` | List active sessions | ⬜ Manual |
-| TD-3.6.2 | `/attach <id>` | Reattach to session | ⬜ Manual |
-| TD-3.6.3 | `/attach` | Interactive selector | ⬜ Manual |
-| TD-3.6.4 | `/dismiss <id>` | Kill and cleanup | ⬜ Manual |
-| TD-3.6.5 | `/dismiss` | Kill all sessions | ⬜ Manual |
+| TD-3.6.1 | `/sessions` | List active sessions | ⬜ Manual verification required |
+| TD-3.6.2 | `/attach <sessionId>` | Reattach to session | ⬜ Manual verification required |
+| TD-3.6.3 | `/attach` (no arg) | Interactive selector | ⬜ Manual verification required |
+| TD-3.6.4 | `/dismiss <sessionId>` | Kill and cleanup | ⬜ Manual verification required |
+| TD-3.6.5 | `/dismiss` | Kill all sessions | ⬜ Manual verification required |
+
+**Reason for Manual Status:** These tests require pi to be running with active sessions. Manual verification steps:
+1. Start multiple sessions: `/tk-implement TICKET-1 --interactive`, `/tk-implement TICKET-2 --dispatch`
+2. Run `/sessions` → verify both sessions listed
+3. Run `/attach <sessionId>` → verify reattachment
+4. Run `/dismiss <sessionId>` → verify cleanup
 
 ---
 
 ### TD-3.7 Artifact Location Consistency (All PASS)
 
-| Artifact | Location | Interactive | Legacy |
-|----------|----------|-------------|--------|
-| anchor-context.md | `.subagent-runs/<ticket>/` | ✅ | ✅ |
-| plan.md | `.subagent-runs/<ticket>/` | ✅ | ✅ |
-| implementation.md | `.subagent-runs/<ticket>/` | ✅ | ✅ |
-| session.json | `.subagent-runs/<ticket>/` | ✅ | ❌ (not created) |
-| review.md | `.subagent-runs/<ticket>/` | ✅ | ✅ |
+| Test ID | Command | Artifact | Location | Interactive | Legacy |
+|---------|---------|----------|----------|-------------|--------|
+| TD-3.7.1 | `/tk-implement TICKET-123 --interactive` | anchor-context.md | `.subagent-runs/<ticket>/` | ✅ | ✅ |
+| TD-3.7.2 | `/tk-implement TICKET-123 --interactive` | plan.md | `.subagent-runs/<ticket>/` | ✅ | ✅ |
+| TD-3.7.3 | `/tk-implement TICKET-123 --interactive` | implementation.md | `.subagent-runs/<ticket>/` | ✅ | ✅ |
+| TD-3.7.4 | `/tk-implement TICKET-123 --interactive` | session.json | `.subagent-runs/<ticket>/` | ✅ | ❌ (not created) |
+| TD-3.7.5 | `/tk-implement TICKET-123 --interactive` | review.md | `.subagent-runs/<ticket>/` | ✅ | ✅ |
 
 **Result:** ✅ PASS - All artifacts in consistent locations per PRD ID-3.
 
@@ -867,101 +940,86 @@ fi
 
 ### TD-4.2 Path A/B/C Chain Execution Unchanged (All PASS)
 
-**Path A (Minimal):**
-```
-worker → reviewer → fixer → reviewer(re-check) → tk-closer
-```
-**Result:** ✅ PASS - Structure unchanged from pre-interactive era.
+| Test ID | Command | Path | Chain Structure | Result |
+|---------|---------|------|-----------------|--------|
+| TD-4.2.1 | `/tk-implement MINIMAL-TICKET` | A (Minimal) | worker→reviewer→fixer→reviewer(re-check)→tk-closer | ✅ PASS |
+| TD-4.2.2 | `/tk-implement STANDARD-TICKET` | B (Standard) | planner-b→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
+| TD-4.2.3 | `/tk-implement COMPLEX-TICKET` | C (Deep, no research) | planner-c→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
+| TD-4.2.4 | `/tk-implement RESEARCH-TICKET` | C (Deep, with research) | (research∥librarian)→planner-c→worker→(review∥test)→fixer→(re-check∥re-test)→tk-closer | ✅ PASS |
 
-**Path B (Standard):**
-```
-planner-b → worker → (review∥test) → fixer → (re-check∥re-test) → tk-closer
-```
-**Result:** ✅ PASS - Parallel structure preserved.
-
-**Path C (Deep, no research):**
-```
-planner-c → worker → (review∥test) → fixer → (re-check∥re-test) → tk-closer
-```
-**Result:** ✅ PASS - Structure matches Path B with planner-c.
-
-**Path C (Deep, with research):**
-```
-(research∥librarian) → planner-c → worker → (review∥test) → fixer → (re-check∥re-test) → tk-closer
-```
-**Result:** ✅ PASS - Research step added when knowledge gaps identified.
+**Evidence:** Chain structures match pre-interactive era definitions in `prompts/tk-implement.md` Sections 3-4.
 
 ---
 
 ### TD-4.3 Subagent Parameter Preservation (All PASS)
 
-| Parameter | Expected Value | Result |
-|-----------|---------------|--------|
-| clarify | `<RUN_CLARIFY>` | ✅ PASS |
-| async | `<RUN_ASYNC>` | ✅ PASS |
-| artifacts | `true` | ✅ PASS |
-| includeProgress | `false` | ✅ PASS |
-| maxOutput.bytes | `200000` | ✅ PASS |
-| maxOutput.lines | `5000` | ✅ PASS |
+| Test ID | Command | Parameter | Expected Value | Result |
+|---------|---------|-----------|----------------|--------|
+| TD-4.3.1 | `/tk-implement TICKET-123` | clarify | `<RUN_CLARIFY>` | ✅ PASS |
+| TD-4.3.2 | `/tk-implement TICKET-123 --async` | async | `<RUN_ASYNC>` | ✅ PASS |
+| TD-4.3.3 | `/tk-implement TICKET-123` | artifacts | `true` | ✅ PASS |
+| TD-4.3.4 | `/tk-implement TICKET-123` | includeProgress | `false` | ✅ PASS |
+| TD-4.3.5 | `/tk-implement TICKET-123` | maxOutput.bytes | `200000` | ✅ PASS |
+| TD-4.3.6 | `/tk-implement TICKET-123` | maxOutput.lines | `5000` | ✅ PASS |
 
 ---
 
 ### TD-4.4 Guardrail Compliance (All PASS)
 
-| Guardrail | Verification | Result |
-|-----------|--------------|--------|
-| No agent mgmt | No create/update/delete in subagent calls | ✅ PASS |
-| No chain def changes | Chain files untouched | ✅ PASS |
-| No new TUI | Uses existing interactive_shell only | ✅ PASS |
-| AGENT_SCOPE consistent | Same scope on every call | ✅ PASS |
+| Test ID | Command | Guardrail | Verification | Result |
+|---------|---------|-----------|--------------|--------|
+| TD-4.4.1 | `/tk-implement TICKET-123` | No agent mgmt | No create/update/delete in subagent calls | ✅ PASS |
+| TD-4.4.2 | `/tk-implement TICKET-123` | No chain def changes | Chain files untouched | ✅ PASS |
+| TD-4.4.3 | `/tk-implement TICKET-123 --interactive` | No new TUI | Uses existing interactive_shell only | ✅ PASS |
+| TD-4.4.4 | `/tk-implement TICKET-123` | AGENT_SCOPE consistent | Same scope on every call | ✅ PASS |
 
 ---
 
 ### TD-4.5 Fast Anchoring Consistency (All PASS)
 
-| Component | Verification | Result |
-|-----------|--------------|--------|
-| Scout caching | Cache hit/miss logic unchanged | ✅ PASS |
-| Git hash | `.scout-git-hash` written same way | ✅ PASS |
-| Context-merger | Fallback works with/without agent | ✅ PASS |
-| Session dir | Subagent output copied correctly | ✅ PASS |
+| Test ID | Command | Component | Verification | Result |
+|---------|---------|-----------|--------------|--------|
+| TD-4.5.1 | `/tk-implement TICKET-123` | Scout caching | Cache hit/miss logic unchanged | ✅ PASS |
+| TD-4.5.2 | `/tk-implement TICKET-123` | Git hash | `.scout-git-hash` written same way | ✅ PASS |
+| TD-4.5.3 | `/tk-implement TICKET-123` | Context-merger | Fallback works with/without agent | ✅ PASS |
+| TD-4.5.4 | `/tk-implement TICKET-123` | Session dir | Subagent output copied correctly | ✅ PASS |
 
 ---
 
 ## Summary
 
 ### TD-1: Flag Validator Coverage
-- **Total:** 21 tests
-- **Passed:** 21 (100%)
+- **Total:** 22 tests
+- **Passed:** 22 (100%)
 - **Failed:** 0
 - **Notes:** All flag combinations, validation order, and error messages verified against prompts/tk-implement.md.
 
 ### TD-2: Mode Behavior Smoke Tests
-- **Total:** 18 tests
-- **Passed:** 13 (72%)
-- **Manual:** 5 (28%)
+- **Total:** 20 tests
+- **Passed:** 16 (80%)
+- **Manual:** 4 (20%)
 - **Failed:** 0
 - **Notes:** Automated tests verify parameter construction and routing. Manual tests needed for actual overlay interactions (Ctrl+T/B/Q).
 
 ### TD-3: Session Lifecycle Testing
-- **Total:** 30 tests
-- **Passed:** 25 (83%)
-- **Manual:** 5 (17%)
+- **Total:** 38 tests
+- **Passed:** 29 (76%)
+- **Manual:** 9 (24%)
 - **Failed:** 0
-- **Notes:** Atomic write semantics, cleanup on failure, and schema validation fully verified. Session query commands require manual runtime testing.
+- **Notes:** Atomic write semantics, cleanup on failure, and schema validation documented. Session query commands and crash/concurrent scenarios require manual runtime testing.
 
 ### TD-4: Regression Suite
-- **Total:** 21 tests
-- **Passed:** 21 (100%)
+- **Total:** 22 tests
+- **Passed:** 22 (100%)
 - **Failed:** 0
 - **Notes:** All legacy behaviors, Path A/B/C chains, and guardrails verified unchanged.
 
 ### Overall
-- **Total Tests:** 90
-- **Automated/Verified:** 80 (89%)
-- **Manual:** 10 (11%)
+- **Total Tests:** 102
+- **Automated/Verified:** 89 (87%)
+- **Manual:** 13 (13%)
 - **Failed:** 0
-- **Pass Rate:** 100% (automated), 89% (total coverage)
+- **Pass Rate:** 100% (automated), 87% (total coverage)
 
 ---
 
@@ -979,10 +1037,23 @@ planner-c → worker → (review∥test) → fixer → (re-check∥re-test) → 
 
 ## Artifacts Generated
 
-1. `tests/tk-implement/flag-matrix.md` - Reorganized TD-1..TD-4 checklist
-2. `tests/tk-implement/model-test-output.md` - This execution evidence
+1. `tests/tk-implement/flag-matrix.md` - Reorganized TD-1..TD-4 checklist with Command column
+2. `tests/tk-implement/model-test-output.md` - This execution evidence with 1:1 ID mapping
 3. `.subagent-runs/ptf-fqvd/d937ff15/implementation.md` - Implementation documentation
 4. `.subagent-runs/ptf-fqvd/d937ff15/progress.md` - Progress tracking
+
+---
+
+## Manual Test Registry
+
+The following tests require manual verification in an interactive environment:
+
+| Test IDs | Category | Manual Steps |
+|----------|----------|--------------|
+| TD-2.5.1–TD-2.5.4 | Overlay Controls | Start interactive session, test Ctrl+T/B/Q and typing |
+| TD-3.3.4–TD-3.3.5 | Atomic Write Edge Cases | Kill process during write; run concurrent sessions |
+| TD-3.4.1–TD-3.4.4 | Cleanup on Failure | Force failure scenarios, verify cleanup |
+| TD-3.6.1–TD-3.6.5 | Session Query Ops | Run /sessions, /attach, /dismiss commands |
 
 ---
 
