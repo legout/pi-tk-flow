@@ -21,7 +21,21 @@ Parsing rules:
 1. Extract `TICKET_ID` as the first non-flag token.
 2. Set flag booleans: `RUN_ASYNC`, `RUN_CLARIFY`, `RUN_INTERACTIVE`, `RUN_HANDS_FREE`, `RUN_DISPATCH`.
 3. If `TICKET_ID` is missing, STOP and ask for a ticket id.
-4. Reject unknown flags with a short help message.
+4. Reject unknown flags with a short help message:
+   ```
+   Unknown flag: <flag>
+
+   Usage: /tk-implement <TICKET_ID> [flags]
+
+   Flags:
+     --interactive    Run with interactive overlay (supervised, blocking)
+     --hands-free     Run with agent-monitored overlay (polling, non-blocking)
+     --dispatch       Run headless background with notification (fire-and-forget)
+     --async          Legacy background mode (no session tracking)
+     --clarify        Open chain clarification TUI
+
+   Use /tk-implement --help for full documentation.
+   ```
 
 **Flag Validation Matrix:**
 

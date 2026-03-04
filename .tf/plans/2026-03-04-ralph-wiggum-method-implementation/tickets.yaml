@@ -1,0 +1,92 @@
+epic:
+  title: "Interactive execution modes for /tk-implement"
+  type: epic
+  description: "Add supervised, hands-free, and dispatch flows that reuse fast anchoring, persist session breadcrumbs, and keep docs/tests aligned."
+  tags: [planning, tk-implement, interactive]
+
+slices:
+  - key: S1
+    title: "Extend /tk-implement flag parsing for interactive modes"
+    type: feature
+    afk_hitl: AFK
+    priority: 1
+    tags: [feature, vertical-slice, tk-implement]
+    description: |
+      Teach the prompt to parse `--interactive`, `--hands-free`, and `--dispatch`, enforce their exclusivity with `--async`/`--clarify`, and keep legacy defaults intact.
+    design: |
+      PRD Solution table & US-5; Spec Architecture §1; Implementation Plan Task 1.
+    acceptance: |
+      - [ ] Parser recognizes the three new flags and surfaces them in usage/help text.
+      - [ ] Invalid combos (multiple interactive flags, interactive+`--async`, `--interactive+--clarify`) emit actionable errors; `--dispatch+--clarify` remains valid.
+      - [ ] Unknown-flag rejection and default/`--async` behavior remain unchanged.
+      - [ ] Parser verification runs are recorded in `model-test-output.md`.
+    blocked_by: []
+
+  - key: S2
+    title: "Route interactive modes through interactive_shell after fast anchoring"
+    type: feature
+    afk_hitl: AFK
+    priority: 1
+    tags: [feature, vertical-slice, tk-implement]
+    description: |
+      Insert a router that detects interactive flags post-anchoring, builds the nested `pi "/tk-implement …"` command, invokes `interactive_shell` per mode, and guards recursion before falling back to Path A/B/C.
+    design: |
+      PRD User Stories US-1..US-3; Spec Architecture §§2-3; Implementation Plan Task 2.
+    acceptance: |
+      - [ ] Router runs after fast anchoring and constructs the nested command including optional `--clarify`.
+      - [ ] `interactive_shell` invocations use the correct `mode`/`background`/`handsFree` settings for interactive, hands-free, and dispatch flows.
+      - [ ] Environment sentinel prevents recursive `/tk-implement` invocations.
+      - [ ] Legacy Path A/B/C execution is unchanged when no interactive flag is set.
+      - [ ] Interactive branches return control cleanly for downstream logging.
+    blocked_by: [S1]
+
+  - key: S3
+    title: "Persist interactive session metadata and breadcrumbs"
+    type: feature
+    afk_hitl: AFK
+    priority: 2
+    tags: [feature, vertical-slice, tk-implement]
+    description: |
+      Record session details (`session.json`) under `.subagent-runs/<ticket>/`, emit `/sessions` + `/attach` instructions, and handle failures without leaving partial artifacts.
+    design: |
+      PRD User Story US-4; Spec Architecture §4 & Observability; Implementation Plan Task 3.
+    acceptance: |
+      - [ ] Interactive runs write `session.json` containing mode, sessionId, timestamps, command, and status.
+      - [ ] Console/log output includes standardized `/sessions` + `/attach` guidance with Ctrl+T/B/Q reminders.
+      - [ ] Failure paths clean up partial files and instruct users how to recover.
+      - [ ] Legacy runs stay untouched (no session artifacts when interactive flags are absent).
+    blocked_by: [S2]
+
+  - key: S4
+    title: "Document execution modes in README and tk-workflow skill"
+    type: feature
+    afk_hitl: AFK
+    priority: 2
+    tags: [feature, vertical-slice, documentation]
+    description: |
+      Add an Execution Modes section, compatibility matrix, `/sessions`/`/attach` guidance, and updated examples so practitioners know when and how to use each flag.
+    design: |
+      PRD Solution & US-1..US-4; Spec Architecture §5; Implementation Plan Task 4.
+    acceptance: |
+      - [ ] README explains each mode, compatibility with `--async`/`--clarify`, and overlay controls (Ctrl+T/B/Q).
+      - [ ] README and skill docs describe session artifacts and `/sessions`/`/attach` workflows.
+      - [ ] `skills/tk-workflow/SKILL.md` advises when to choose interactive vs hands-free vs dispatch vs async, including troubleshooting tips.
+      - [ ] Examples include `--hands-free` and `--dispatch`, matching implemented behavior.
+    blocked_by: [S3]
+
+  - key: S5
+    title: "Capture flag matrix tests and logged evidence"
+    type: feature
+    afk_hitl: AFK
+    priority: 3
+    tags: [feature, vertical-slice, testing]
+    description: |
+      Create `tests/tk-implement/flag-matrix.md` covering TD-1..TD-4 scenarios and append execution evidence to `model-test-output.md`.
+    design: |
+      PRD Testing Decisions TD-1..TD-4; Spec Testing Strategy; Implementation Plan Task 5.
+    acceptance: |
+      - [ ] Checklist documents valid/invalid combos, mode behaviors, session lifecycle, and legacy regressions.
+      - [ ] Each scenario specifies commands plus expected results.
+      - [ ] `model-test-output.md` logs evidence that the matrix was executed.
+      - [ ] Checklist confirms session artifact contents (`session.json`) and cleanup expectations.
+    blocked_by: [S4]

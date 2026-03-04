@@ -1,0 +1,171 @@
+epic:
+  title: "Add TUI and optional web UI for pi-tk-flow"
+  type: epic
+  description: "Deliver a Textual-based UI for ticket and knowledge workflows in terminal mode, with optional web serving and optional dependency install path."
+  tags: [planning, ui]
+
+slices:
+  - key: S1
+    title: "Bootstrap optional UI runtime package"
+    type: chore
+    afk_hitl: AFK
+    priority: 1
+    tags: [ui, python, foundation, vertical-slice]
+    description: |
+      Create the Python package skeleton and runtime entrypoint for pi_tk_flow_ui,
+      including optional [ui] dependencies and friendly missing-dependency guidance.
+    design: |
+      PRD: US-6 Optional Installation; ID-6 Optional [ui] extra.
+      Spec: C-8 Package Configuration; E-1 Missing Python; E-2 Missing UI deps.
+      Plan: Task 1.
+    acceptance: |
+      - [ ] python/pyproject.toml declares requires-python >=3.10 and [ui] extras for textual+pyyaml.
+      - [ ] python/pi_tk_flow_ui/__init__.py and __main__.py support python -m pi_tk_flow_ui.
+      - [ ] Missing UI deps show actionable install guidance (pip install -e ./python[ui]) without traceback spam.
+      - [ ] Core non-UI workflows still function without installing UI extras.
+    blocked_by: []
+
+  - key: S2
+    title: "Build multi-plan ticket loading + status/classification backbone"
+    type: feature
+    afk_hitl: AFK
+    priority: 1
+    tags: [ui, data-layer, vertical-slice]
+    description: |
+      Implement YamlTicketLoader and BoardClassifier to aggregate tickets from
+      .tf/plans/*/tickets.yaml, resolve runtime status from tk CLI, and classify
+      tickets into Kanban columns with dependency awareness.
+    design: |
+      PRD: US-1; ID-2 YAML Ticket Loader; ID-4 tk CLI status source; ID-5 Multi-plan aggregation.
+      Spec: C-5 YamlTicketLoader; C-6 BoardClassifier; E-3/E-4/E-5.
+      Plan: Tasks 2-3.
+    acceptance: |
+      - [ ] Loader parses all plan tickets.yaml files and maps fields into ticket model objects.
+      - [ ] Status lookup uses tk show <id> --format json and falls back to open on failure.
+      - [ ] Malformed/missing YAML files are skipped with warnings, without aborting load.
+      - [ ] Classifier outputs CLOSED/BLOCKED/IN_PROGRESS/READY per dependency-aware rules.
+      - [ ] Unknown dependencies are handled safely and do not crash classification.
+    blocked_by: [S1]
+
+  - key: S3
+    title: "Ship terminal Kanban board core (read-only with refresh)"
+    type: feature
+    afk_hitl: AFK
+    priority: 1
+    tags: [ui, textual, kanban, vertical-slice]
+    description: |
+      Adapt TicketflowApp/TicketBoard to render four columns, ticket cards, and
+      ticket details in terminal mode, including refresh-driven status reload.
+    design: |
+      PRD: US-1 Visual Kanban.
+      Spec: C-2 TicketflowApp; C-3 TicketBoard; D-1 startup flow; D-2 refresh flow.
+      Plan: Task 5 (tickets tab parts).
+    acceptance: |
+      - [ ] python -m pi_tk_flow_ui renders Tickets tab with Ready/Blocked/In Progress/Closed columns.
+      - [ ] Tickets are grouped by classifier output and include enough info to distinguish plan context.
+      - [ ] Selecting a ticket updates a detail panel with description, deps, and status.
+      - [ ] Pressing r triggers status refresh and board reclassification.
+      - [ ] No-ticket scenario shows a clear non-crashing empty-state message.
+    blocked_by: [S2]
+
+  - key: S4
+    title: "Expose /tf ui terminal launch command in pi extension"
+    type: feature
+    afk_hitl: AFK
+    priority: 2
+    tags: [extension, ui, launch, vertical-slice]
+    description: |
+      Add extensions/tf-ui.ts wiring so users can launch the terminal TUI from
+      pi via /tf ui with clear runtime error handling.
+    design: |
+      PRD: Solution -> Extension Command.
+      Spec: C-1 Extension command; E-1/E-2 error handling.
+      Plan: Task 6.
+    acceptance: |
+      - [ ] /tf ui is registered and discoverable in extension command help.
+      - [ ] /tf ui launches python -m pi_tk_flow_ui when environment is valid.
+      - [ ] Missing Python or missing UI package/deps yields actionable guidance.
+      - [ ] Extension process lifecycle is handled cleanly on success/failure.
+    blocked_by: [S3]
+
+  - key: S5
+    title: "Add knowledge topic browser tab with live scanning"
+    type: feature
+    afk_hitl: AFK
+    priority: 2
+    tags: [ui, knowledge, topics, vertical-slice]
+    description: |
+      Implement TopicScanner and a Topics tab that scans markdown topics at load,
+      groups by prefix, and displays selected topic content.
+    design: |
+      PRD: US-2 Knowledge Topic Browser; ID-3 Topic scanner.
+      Spec: C-4 TopicBrowser; C-7 TopicScanner; E-6 missing knowledge dir.
+      Plan: Tasks 4-5 (topics tab wiring).
+    acceptance: |
+      - [ ] Topics are scanned from .tf/knowledge/topics/*.md without index.json.
+      - [ ] Grouping by seed/plan/spike/baseline/other is stable and deterministic.
+      - [ ] Selecting a topic displays title and content in detail panel.
+      - [ ] Missing/empty knowledge directory shows a non-crashing empty-state message.
+    blocked_by: [S3]
+
+  - key: S6
+    title: "Deliver filtering + keyboard productivity actions"
+    type: feature
+    afk_hitl: AFK
+    priority: 2
+    tags: [ui, filters, keybindings, vertical-slice]
+    description: |
+      Implement search/tag/assignee filtering plus keybindings (q/r/o/e/1-4)
+      so users can navigate and act without leaving the keyboard.
+    design: |
+      PRD: US-3 Ticket Filtering; US-4 Quick Actions.
+      Spec: C-2 bindings; C-3 filters; D-3 filter flow; D-4 doc-open flow; E-7 editor failure.
+      Plan: Task 5.
+    acceptance: |
+      - [ ] Search filters by ticket title/description with immediate board updates.
+      - [ ] Tag and assignee filters can be applied and cleared independently.
+      - [ ] q quits, r refreshes, e opens in editor, o opens primary doc/topic in pager.
+      - [ ] 1-4 shortcuts resolve expected plan docs for current ticket context.
+      - [ ] Editor/pager failure paths show actionable errors instead of crashing.
+    blocked_by: [S3, S5]
+
+  - key: S7
+    title: "Add web mode entry and user-facing docs"
+    type: feature
+    afk_hitl: AFK
+    priority: 3
+    tags: [web-ui, docs, ui, vertical-slice]
+    description: |
+      Support /tf ui --web command output and publish clear docs for optional UI
+      install, terminal/web usage, troubleshooting, and topic naming conventions.
+    design: |
+      PRD: US-5 Web Access; US-6 Optional Installation.
+      Spec: C-1 web behavior; rollout/success criteria.
+      Plan: Tasks 6 and 8.
+    acceptance: |
+      - [ ] /tf ui --web prints textual serve "python -m pi_tk_flow_ui" command.
+      - [ ] Web output includes a host-binding security note for non-local exposure.
+      - [ ] README has copy-paste install/run snippets for terminal and web usage.
+      - [ ] .tf/knowledge/README.md documents topic naming conventions used by scanner.
+    blocked_by: [S4]
+
+  - key: S8
+    title: "Lock in quality gates with fixtures, tests, and verification log"
+    type: task
+    afk_hitl: AFK
+    priority: 3
+    tags: [tests, qa, ui, vertical-slice]
+    description: |
+      Add deterministic fixtures and automated tests for loader/scanner/classifier,
+      then record end-to-end verification evidence for launch, refresh, filtering,
+      topics, keybindings, and web command behavior.
+    design: |
+      PRD: TD-1/TD-2/TD-3 testing decisions; success metrics.
+      Spec: T-1/T-2/T-3/T-4 testing strategy; R-4 success criteria.
+      Plan: Tasks 7 and 9.
+    acceptance: |
+      - [ ] Fixture project includes representative tickets.yaml and topic markdown files.
+      - [ ] Unit tests cover YAML mapping/status fallback, dependency classification, and topic parsing/grouping.
+      - [ ] pytest tests/test_ticket_loader.py tests/test_board_classifier.py tests/test_topic_scanner.py passes locally.
+      - [ ] Progress/PR checklist includes pass/fail evidence for all core UI scenarios.
+    blocked_by: [S2, S5, S6, S7]

@@ -8,25 +8,25 @@ Test suite for validating flag parsing, validation, and routing behavior in `/tk
 
 | Test ID | Command | Expected | Status |
 |---------|---------|----------|--------|
-| A.1.1 | `/tk-implement TICKET-123` | Runs Path A/B/C (no interactive) | ⬜ |
-| A.1.2 | `/tk-implement TICKET-123 --interactive` | Interactive mode overlay | ⬜ |
-| A.1.3 | `/tk-implement TICKET-123 --hands-free` | Hands-free monitored overlay | ⬜ |
-| A.1.4 | `/tk-implement TICKET-123 --dispatch` | Dispatch background mode | ⬜ |
-| A.1.5 | `/tk-implement TICKET-123 --async` | Legacy async mode | ⬜ |
-| A.1.6 | `/tk-implement TICKET-123 --clarify` | Chain clarification TUI | ⬜ |
+| A.1.1 | `/tk-implement TICKET-123` | Runs Path A/B/C (no interactive) | ✅ |
+| A.1.2 | `/tk-implement TICKET-123 --interactive` | Interactive mode overlay | ✅ |
+| A.1.3 | `/tk-implement TICKET-123 --hands-free` | Hands-free monitored overlay | ✅ |
+| A.1.4 | `/tk-implement TICKET-123 --dispatch` | Dispatch background mode | ✅ |
+| A.1.5 | `/tk-implement TICKET-123 --async` | Legacy async mode | ✅ |
+| A.1.6 | `/tk-implement TICKET-123 --clarify` | Chain clarification TUI | ✅ |
 
 ### A.2 Invalid Flag Combinations (Should Error)
 
 | Test ID | Command | Expected Error | Status |
 |---------|---------|----------------|--------|
-| A.2.1 | `/tk-implement TICKET-123 --interactive --hands-free` | "Cannot combine --interactive with --hands-free" | ⬜ |
-| A.2.2 | `/tk-implement TICKET-123 --interactive --dispatch` | "Cannot combine --interactive with --dispatch" | ⬜ |
-| A.2.3 | `/tk-implement TICKET-123 --hands-free --dispatch` | "Cannot combine --hands-free with --dispatch" | ⬜ |
-| A.2.4 | `/tk-implement TICKET-123 --interactive --async` | "Interactive modes cannot be used with --async" | ⬜ |
-| A.2.5 | `/tk-implement TICKET-123 --hands-free --async` | "Interactive modes cannot be used with --async" | ⬜ |
-| A.2.6 | `/tk-implement TICKET-123 --dispatch --async` | "Interactive modes cannot be used with --async" | ⬜ |
-| A.2.7 | `/tk-implement TICKET-123 --interactive --clarify` | "--interactive and --clarify are mutually exclusive" | ⬜ |
-| A.2.8 | `/tk-implement TICKET-123 --unknown-flag` | "Unknown flag: --unknown-flag" + help | ⬜ |
+| A.2.1 | `/tk-implement TICKET-123 --interactive --hands-free` | "Cannot combine --interactive with --hands-free" | ✅ |
+| A.2.2 | `/tk-implement TICKET-123 --interactive --dispatch` | "Cannot combine --interactive with --dispatch" | ✅ |
+| A.2.3 | `/tk-implement TICKET-123 --hands-free --dispatch` | "Cannot combine --hands-free with --dispatch" | ✅ |
+| A.2.4 | `/tk-implement TICKET-123 --interactive --async` | "Interactive modes cannot be used with --async" | ✅ |
+| A.2.5 | `/tk-implement TICKET-123 --hands-free --async` | "Interactive modes cannot be used with --async" | ✅ |
+| A.2.6 | `/tk-implement TICKET-123 --dispatch --async` | "Interactive modes cannot be used with --async" | ✅ |
+| A.2.7 | `/tk-implement TICKET-123 --interactive --clarify` | "--interactive and --clarify are mutually exclusive" | ✅ |
+| A.2.8 | `/tk-implement TICKET-123 --unknown-flag` | "Unknown flag: --unknown-flag" + help | ✅ |
 
 ### A.3 Valid Flag Combinations
 
