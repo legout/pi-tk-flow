@@ -16,7 +16,7 @@ progress: true
 
 Build re-anchored implementation context for task: {task}. Include constraints from .tf/AGENTS.md and .tf/knowledge when available.
 
-## planner
+## planner-b
 reads: anchor-context.md
 output: plan.md
 progress: true

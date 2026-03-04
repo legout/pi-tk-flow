@@ -1,20 +1,27 @@
 ---
 name: tk-brainstorm
-description: Brainstorm workflow (scout -> context-builder -> documenter) producing a decision-ready brief
+description: Brainstorm workflow with seeded anchoring (sequential preset: scout + context-builder + context-merger, then documenter)
 ---
 
 ## scout
 output: scout-context.md
 progress: true
 
-Scout project context for brainstorming task: {task}. Focus on constraints, architecture seams, and existing test patterns.
+Scout project context for brainstorming task: {task}. If `topic-seed.json` exists, read it first. If `from-seed.md` exists, prioritize concepts/files implied by it. Focus on constraints, architecture seams, and existing test patterns.
 
 ## context-builder
-reads: scout-context.md
+reads: false
+output: anchor-context-base.md
+progress: true
+
+Build anchored brainstorming context base for task: {task}. If `topic-seed.json` exists, read it first. If `from-seed.md` exists, synthesize it. Include constraints from .tf/AGENTS.md and .tf/knowledge when present.
+
+## context-merger
+reads: scout-context.md, anchor-context-base.md
 output: anchor-context.md
 progress: true
 
-Build anchored brainstorming context for task: {task}. Include constraints from .tf/AGENTS.md and .tf/knowledge when present.
+Merge `scout-context.md` and `anchor-context-base.md` into final `anchor-context.md`. Preserve all anchor sections and append scout code context.
 
 ## documenter
 reads: anchor-context.md

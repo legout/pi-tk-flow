@@ -46,8 +46,10 @@ Preserve local edits (no overwrite when content differs):
 
 ```bash
 /tk-brainstorm <topic>
-/tk-brainstorm <topic> --mode feature|refactor|simplify --research
+/tk-brainstorm <topic> --mode feature|refactor|simplify
 ```
+
+Research/library deep-dives are auto-routed when needed (no research flag).
 
 ### 1) Plan
 
@@ -62,14 +64,22 @@ Preserve local edits (no overwrite when content differs):
 - `--fast` (default): PRD, Spec, and Design created in parallel (~30% faster)
 - `--thorough`: Sequential PRD → Spec → Design with full cross-synthesis (higher quality docs)
 
-### 2) Ticketize
+### 2) Optional plan quality gate + refinement
+
+```bash
+/tk-plan-check .tf/plans/<plan-dir>
+/tk-plan-check .tf/plans/<plan-dir>/03-implementation-plan.md --thorough
+/tk-plan-refine .tf/plans/<plan-dir>
+```
+
+### 3) Ticketize
 
 ```bash
 /tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md           # create tickets (default)
 /tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run # preview only
 ```
 
-### 3) Implement
+### 4) Implement
 
 ```bash
 /tk-implement <ticket-id>          # main agent decides path after analysis
@@ -82,8 +92,8 @@ Preserve local edits (no overwrite when content differs):
 2. **YOU (the main agent)** analyze the ticket and anchor context
 3. Choose the path:
    - **Path A (Minimal)**: Simple config/docs/fixes. No research. Review only.
-   - **Path B (Standard)**: Features/integrations. Planner + parallel review+test.
-   - **Path C (Deep)**: Complex/AI/novel work. Research (if needed) + parallel review+test.
+   - **Path B (Standard)**: Features/integrations. Planner-B + parallel review+test.
+   - **Path C (Deep)**: Complex/AI/novel work. Research (if needed) + Planner-C + parallel review+test.
 4. Research is never skipped when context identifies knowledge gaps
 
 ## Expected artifacts
@@ -94,6 +104,9 @@ Preserve local edits (no overwrite when content differs):
 - `.tf/plans/<date>-<topic>/02-spec.md`
 - `.tf/plans/<date>-<topic>/03-implementation-plan.md`
 - `.tf/plans/<date>-<topic>/04-ticket-breakdown.md`
+- `.tf/plans/<date>-<topic>/05-plan-gaps.md` (optional quality gate)
+- `.tf/plans/<date>-<topic>/06-plan-review.md` (optional quality gate)
+- `.tf/plans/<date>-<topic>/07-refinement-summary.md` (optional refine)
 - `.tf/plans/<date>-<topic>/tickets.yaml`
 - `.subagent-runs/*` chain artifacts
 - `.tf/knowledge/` reusable research cache
@@ -106,5 +119,6 @@ Preserve local edits (no overwrite when content differs):
 - If you bootstrap with `--scope project`, align prompt agent scope accordingly (`project` or `both`).
 - `tk-ticketize` defaults to `--create` (creates tickets immediately). Use `--dry-run` to preview.
 - `tk-plan` defaults to `--fast` (parallel documenters). Use `--thorough` for sequential synthesis.
+- `tk-plan-check` and `tk-plan-refine` default to `--fast`; use `--thorough` for deeper architecture validation/refinement.
 - `tk-bootstrap` overwrites changed files by default; add `--no-overwrite` to keep local modifications (changed files are skipped).
 - `tk-implement`: Main agent decides path after analyzing ticket. Research is never skipped when needed.

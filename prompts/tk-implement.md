@@ -32,9 +32,9 @@ Parsing rules:
   - Optional optimization agent: `context-merger` (if missing, use fallback chain in section 1e).
 - Path-specific preflight before executing chosen path:
   - Path A: baseline + `fixer`
-  - Path B: baseline + `planner`, `tester`, `fixer`
-  - Path C with research: baseline + `planner`, `tester`, `fixer`, `researcher`, `librarian`
-  - Path C without new research: baseline + `planner`, `tester`, `fixer`
+  - Path B: baseline + `planner-b`, `tester`, `fixer`
+  - Path C with research: baseline + `planner-c`, `tester`, `fixer`, `researcher`, `librarian`
+  - Path C without new research: baseline + `planner-c`, `tester`, `fixer`
 - If a required agent is missing, **STOP** and report which agent(s) are missing.
 - Do not write or modify `.pi/agents/*` as part of `/tk-implement`.
 
@@ -332,7 +332,7 @@ Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 | **Research needed?** | No (existing knowledge sufficient) | Maybe (check knowledge first) | Yes (new domain/libraries) |
 | **LOC estimate** | <50 | 50-200 | >200 |
 | **Validation** | Review only | Review + Test (parallel) | Review + Test (parallel) |
-| **Chain steps** | seed→(scout∥context)→merge→worker→reviewer→fixer→reviewer(re-check)→closer | seed→(scout∥context)→merge→planner→worker→**parallel review+test**→fixer→**parallel re-check**→closer | seed→(scout∥context)→merge→**parallel research**→planner→worker→**parallel review+test**→fixer→**parallel re-check**→closer |
+| **Chain steps** | seed→(scout∥context)→merge→worker→reviewer→fixer→reviewer(re-check)→closer | seed→(scout∥context)→merge→planner-b→worker→**parallel review+test**→fixer→**parallel re-check**→closer | seed→(scout∥context)→merge→**parallel research**→planner-c→worker→**parallel review+test**→fixer→**parallel re-check**→closer |
 
 ### Decision Rules
 
@@ -398,7 +398,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
-    { "agent": "planner", "task": "Create implementation plan for ticket <TICKET_ID>.", "reads": ["anchor-context.md"], "output": "plan.md" },
+    { "agent": "planner-b", "task": "Create implementation plan for ticket <TICKET_ID>.", "reads": ["anchor-context.md"], "output": "plan.md" },
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [
@@ -448,7 +448,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
       "concurrency": 2,
       "failFast": false
     },
-    { "agent": "planner", "task": "Create implementation plan for ticket <TICKET_ID>.", "reads": ["anchor-context.md", "research.md", "library-research.md"], "output": "plan.md" },
+    { "agent": "planner-c", "task": "Create implementation plan for ticket <TICKET_ID>.", "reads": ["anchor-context.md", "research.md", "library-research.md"], "output": "plan.md" },
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [
@@ -484,7 +484,7 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
-    { "agent": "planner", "task": "Create implementation plan for ticket <TICKET_ID> using existing knowledge.", "reads": ["anchor-context.md"], "output": "plan.md" },
+    { "agent": "planner-c", "task": "Create implementation plan for ticket <TICKET_ID> using existing knowledge.", "reads": ["anchor-context.md"], "output": "plan.md" },
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [

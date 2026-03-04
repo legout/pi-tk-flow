@@ -7,16 +7,20 @@ A reusable pi package for tk-driven planning + ticket implementation workflows.
 - Prompt templates:
   - `/tk-brainstorm`
   - `/tk-plan`
+  - `/tk-plan-check`
+  - `/tk-plan-refine`
   - `/tk-ticketize`
   - `/tk-implement`
 - Bootstrap command extension: `/tk-bootstrap`
 - Subagent templates under `assets/agents/`:
-  - context-builder, scout, context-merger, researcher, librarian, planner, worker, reviewer, tester, fixer
-  - documenter, refactorer, simplifier, tk-closer, ticketizer
+  - context-builder, scout, context-merger, researcher, librarian, planner, planner-b, planner-c, worker, reviewer, tester, fixer
+  - plan-gap-analyzer, plan-reviewer, documenter, refactorer, simplifier, tk-closer, ticketizer
 - Reusable chain presets under `assets/chains/`:
   - `tk-brainstorm.chain.md`
   - `tk-plan.chain.md`
   - `tk-plan-thorough.chain.md`
+  - `tk-plan-check.chain.md`
+  - `tk-plan-refine.chain.md`
   - `tk-ticketize.chain.md`
   - `tk-path-a.chain.md`
   - `tk-path-b.chain.md`
@@ -86,19 +90,27 @@ Existing file behavior:
 ```bash
 # 0) Optional brainstorming brief
 /tk-brainstorm <topic>
-/tk-brainstorm <topic> --mode feature|refactor|simplify --research
+/tk-brainstorm <topic> --mode feature|refactor|simplify
+# researcher/librarian are auto-routed by the command when needed (no research flag)
 
 # 1) Planning artifacts (PRD/spec/implementation plan)
 /tk-plan <topic>                          # fast mode (default)
 /tk-plan <topic> --thorough               # sequential synthesis mode
 /tk-plan <topic> --mode feature|refactor|simplify
 /tk-plan <topic> --from .tf/plans/<plan-dir>/00-design.md
+# plan/brainstorm auto-route researcher/librarian when needed and persist findings to .tf/knowledge/topics/<topic-slug>/
 
-# 2) Ticket decomposition (default creates tickets)
+# 2) Optional plan quality gate + refinement
+/tk-plan-check .tf/plans/<plan-dir>
+/tk-plan-check .tf/plans/<plan-dir>/03-implementation-plan.md --thorough
+/tk-plan-refine .tf/plans/<plan-dir>                  # applies refinements when needed
+/tk-plan-refine .tf/plans/<plan-dir> --thorough
+
+# 3) Ticket decomposition (default creates tickets)
 /tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md
 /tk-ticketize .tf/plans/<plan-dir>/03-implementation-plan.md --dry-run
 
-# 3) Implementation of a ticket (main agent chooses path)
+# 4) Implementation of a ticket (main agent chooses path)
 /tk-implement <ticket-id>
 /tk-implement <ticket-id> --async
 /tk-implement <ticket-id> --clarify
@@ -108,7 +120,7 @@ Flag behavior:
 - `--async`: background mode (`async: true`)
 - `--clarify`: open chain clarify TUI (`clarify: true`)
 - If both are passed, async wins and clarify is disabled for deterministic background execution.
-- `tk-plan` supports `--fast` (default) and `--thorough`.
+- `tk-plan`, `tk-plan-check`, and `tk-plan-refine` support `--fast` (default) and `--thorough`.
 - `tk-ticketize` defaults to create mode. Use `--dry-run` to preview without creating tickets.
 
 ## Scope behavior
@@ -125,6 +137,9 @@ Flag behavior:
 - `.tf/plans/<date>-<topic>/02-spec.md`
 - `.tf/plans/<date>-<topic>/03-implementation-plan.md`
 - `.tf/plans/<date>-<topic>/04-ticket-breakdown.md`
+- `.tf/plans/<date>-<topic>/05-plan-gaps.md` (optional quality gate)
+- `.tf/plans/<date>-<topic>/06-plan-review.md` (optional quality gate)
+- `.tf/plans/<date>-<topic>/07-refinement-summary.md` (optional refine step)
 - `.tf/plans/<date>-<topic>/tickets.yaml`
 - `.subagent-runs/*` chain artifacts
 - `.tf/knowledge/*` persistent research cache

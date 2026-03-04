@@ -30,7 +30,7 @@ progress: true
 
 Produce source-backed library internals/history findings for task: {task} with permalinks.
 
-## planner
+## planner-c
 reads: anchor-context.md, research.md, library-research.md
 output: plan.md
 progress: true

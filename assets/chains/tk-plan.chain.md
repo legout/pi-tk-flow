@@ -1,20 +1,27 @@
 ---
 name: tk-plan
-description: Fast planning workflow — independent parallel-friendly documenters (PRD, spec, design each read only anchor context)
+description: Fast planning workflow with seeded anchoring (sequential preset: scout + context-builder + context-merger, then PRD/spec/design + plan)
 ---
 
 ## scout
 output: scout-context.md
 progress: true
 
-Scout project context for planning task: {task}. Focus on current architecture, relevant files, constraints, and tests.
+Scout project context for planning task: {task}. If `topic-seed.json` exists, read it first. If `from-seed.md` exists, prioritize concepts/files implied by it. Focus on current architecture, relevant files, constraints, and tests.
 
 ## context-builder
-reads: scout-context.md
+reads: false
+output: anchor-context-base.md
+progress: true
+
+Build anchored planning context base for task: {task}. If `topic-seed.json` exists, read it first. If `from-seed.md` exists, synthesize it. Include constraints from .tf/AGENTS.md and .tf/knowledge when present.
+
+## context-merger
+reads: scout-context.md, anchor-context-base.md
 output: anchor-context.md
 progress: true
 
-Build anchored planning context for task: {task}. Include constraints from .tf/AGENTS.md and .tf/knowledge when present.
+Merge `scout-context.md` and `anchor-context-base.md` into final `anchor-context.md`. Preserve all anchor sections and append scout code context.
 
 ## documenter
 reads: anchor-context.md

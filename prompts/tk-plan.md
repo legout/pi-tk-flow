@@ -13,14 +13,14 @@ Supported flags:
 - `--thorough` (sequential PRD→Spec→Design with full cross-synthesis)
 - `--mode feature|refactor|simplify` (default: `feature`)
 - `--from <path>` optional seed doc/notes file
-- `--async` run chain in background
-- `--clarify` open chain clarify UI
+- `--async` run phase-2 chain in background
+- `--clarify` open phase-2 chain clarify UI
 
 Rules:
 1. Topic is the remaining non-flag text after parsing.
 2. If topic is empty, STOP and ask for a topic.
 3. If both `--fast` and `--thorough` are present, STOP and ask user to choose one.
-4. Default speed profile is `fast` (feature mode still defaults to `--mode feature`).
+4. Default speed profile is `fast`.
 5. If both `--async` and `--clarify` are present, prefer async and set clarify=false.
 6. Reject unknown flags with a short help message.
 
@@ -30,15 +30,44 @@ Rules:
 - `TOPIC_SLUG = kebab-case(topic)`
 - `PLAN_DIR = .tf/plans/${DATE}-${TOPIC_SLUG}`
 - `CHAIN_DIR = .subagent-runs/tk-plan/${TOPIC_SLUG}`
+- `TOPIC_SEED = ${CHAIN_DIR}/topic-seed.json`
+- `KNOWLEDGE_TOPIC_DIR = .tf/knowledge/topics/${TOPIC_SLUG}`
 
 Ensure directories exist:
 - `.tf/plans`
 - `${PLAN_DIR}`
 - `.subagent-runs/tk-plan`
+- `${CHAIN_DIR}`
+- `.tf/knowledge/topics`
+- `${KNOWLEDGE_TOPIC_DIR}`
 
 If `--from` is set, verify the file exists before proceeding.
 
-## 2) Subagent Scope Guardrails
+## 2) Build Seeded Inputs (required)
+
+Create a seed file that both `scout` and `context-builder` consume.
+
+Write `${TOPIC_SEED}` with:
+```json
+{
+  "topic": "<TOPIC>",
+  "mode": "<MODE>",
+  "plan_dir": "<PLAN_DIR>",
+  "from_path": "<FROM_PATH_OR_NULL>",
+  "topic_terms": ["token1", "token2", "token3"],
+  "summary": "One-line planning objective"
+}
+```
+
+If `--from` is provided:
+1. Read the source file.
+2. Write `${CHAIN_DIR}/from-seed.md` with source content (or concise extracted sections if very large).
+3. Set `SEED_READS = ["topic-seed.json", "from-seed.md"]`.
+
+If `--from` is not provided:
+- Set `SEED_READS = ["topic-seed.json"]`.
+
+## 3) Subagent Scope Guardrails
 
 - Use existing agents only.
 - Never call subagent management actions create/update/delete.
@@ -47,14 +76,146 @@ If `--from` is set, verify the file exists before proceeding.
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
-  - Required agents: `scout`, `context-builder`, `documenter`, `planner`
-- If any required agent is missing, STOP and report missing names.
+  - Required baseline agents: `scout`, `context-builder`, `documenter`, `planner`, `researcher`, `librarian`
+  - Optional optimization agent: `context-merger`
+- If baseline agents are missing, STOP and report missing names.
+- Set `HAS_CONTEXT_MERGER=true|false` based on preflight.
 
-## 3) Planning Chain
+## 4) Phase 1 (always sync): Build Anchored Context
 
-Select chain by speed profile:
-- If `--thorough` is set, run the **Thorough Mode** chain.
-- Otherwise (default, including explicit `--fast`), run the **Fast Mode** chain.
+Run anchoring first so the main agent can decide whether research/librarian calls are needed.
+
+Use runtime defaults for phase 1:
+- `clarify: false`
+- `async: false`
+- `artifacts: true`
+- `includeProgress: false`
+- `maxOutput: { "bytes": 200000, "lines": 5000 }`
+
+### Preferred phase-1 chain (when `HAS_CONTEXT_MERGER=true`)
+
+```json
+{
+  "agentScope": "<AGENT_SCOPE>",
+  "chainDir": "<CHAIN_DIR>",
+  "clarify": false,
+  "async": false,
+  "artifacts": true,
+  "includeProgress": false,
+  "maxOutput": { "bytes": 200000, "lines": 5000 },
+  "chain": [
+    {
+      "parallel": [
+        {
+          "agent": "scout",
+          "task": "Scout project context for planning topic '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. If from-seed.md exists, prioritize concepts/files implied by it. Focus on relevant files, constraints, existing architecture, and test patterns.",
+          "reads": <SEED_READS>,
+          "output": "scout-context.md"
+        },
+        {
+          "agent": "context-builder",
+          "task": "Build anchored planning context base for '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. Include constraints from .tf/AGENTS.md and .tf/knowledge when available. If from-seed.md exists, synthesize it.",
+          "reads": <SEED_READS>,
+          "output": "anchor-context-base.md"
+        }
+      ],
+      "concurrency": 2,
+      "failFast": false
+    },
+    {
+      "agent": "context-merger",
+      "task": "Merge scout-context.md and anchor-context-base.md into anchor-context.md. Preserve all anchor sections and append code-context findings from scout. Also write/update '<KNOWLEDGE_TOPIC_DIR>/anchor-context.md' with the merged result.",
+      "reads": ["scout-context.md", "anchor-context-base.md"],
+      "output": "anchor-context.md"
+    }
+  ]
+}
+```
+
+### Fallback phase-1 chain (when `HAS_CONTEXT_MERGER=false`)
+
+```json
+{
+  "agentScope": "<AGENT_SCOPE>",
+  "chainDir": "<CHAIN_DIR>",
+  "clarify": false,
+  "async": false,
+  "artifacts": true,
+  "includeProgress": false,
+  "maxOutput": { "bytes": 200000, "lines": 5000 },
+  "chain": [
+    {
+      "parallel": [
+        {
+          "agent": "scout",
+          "task": "Scout project context for planning topic '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. If from-seed.md exists, prioritize concepts/files implied by it. Focus on relevant files, constraints, existing architecture, and test patterns.",
+          "reads": <SEED_READS>,
+          "output": "scout-context.md"
+        },
+        {
+          "agent": "context-builder",
+          "task": "Build anchored planning context draft for '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. Include constraints from .tf/AGENTS.md and .tf/knowledge when available. If from-seed.md exists, synthesize it.",
+          "reads": <SEED_READS>,
+          "output": "anchor-context-draft.md"
+        }
+      ],
+      "concurrency": 2,
+      "failFast": false
+    },
+    {
+      "agent": "context-builder",
+      "task": "Finalize anchor-context.md by merging anchor-context-draft.md with scout-context.md. Keep all draft sections and add a Code Context section from scout findings. Also write/update '<KNOWLEDGE_TOPIC_DIR>/anchor-context.md' with the merged result.",
+      "reads": ["anchor-context-draft.md", "scout-context.md"],
+      "output": "anchor-context.md"
+    }
+  ]
+}
+```
+
+## 5) Research Routing (main-agent decision, no flags)
+
+Read `<CHAIN_DIR>/anchor-context.md` and decide:
+- `USE_RESEARCHER=true` when there are unresolved best-practice/design/operational gaps not already covered by `.tf/knowledge/**`.
+- `USE_LIBRARIAN=true` when external library behavior, version differences, internals, or source-level evidence are needed.
+- Both may be true; both may be false.
+
+Then build:
+- `DOC_READS = ["anchor-context.md"]`
+- If `USE_RESEARCHER`, append `research.md` to `DOC_READS`.
+- If `USE_LIBRARIAN`, append `library-research.md` to `DOC_READS`.
+- `SPEC_READS = DOC_READS + ["prd-draft.md"]`
+- `DESIGN_READS = DOC_READS + ["prd-draft.md", "spec-draft.md"]`
+- `PLAN_READS = DOC_READS + ["prd-draft.md", "spec-draft.md", "design-draft.md"]`
+
+Research step definitions:
+
+```json
+{
+  "agent": "researcher",
+  "task": "Research external best practices for '<TOPIC>' with focus on architecture and rollout trade-offs relevant to this repository context. Reuse existing .tf/knowledge first. Write chain artifact to 'research.md'. Also persist reusable findings to '<KNOWLEDGE_TOPIC_DIR>/plan-research.md'.",
+  "reads": ["anchor-context.md"],
+  "output": "research.md"
+}
+```
+
+```json
+{
+  "agent": "librarian",
+  "task": "Produce source-backed library internals/history findings for '<TOPIC>' with permalinks and concrete implementation implications. Write chain artifact to 'library-research.md'. Also persist reusable findings to '<KNOWLEDGE_TOPIC_DIR>/plan-library-research.md'.",
+  "reads": ["anchor-context.md"],
+  "output": "library-research.md"
+}
+```
+
+If both are needed, run them in a parallel block (`concurrency: 2`, `failFast: false`).
+
+## 6) Phase 2: Build planning docs (optional research/librarian + docs + plan)
+
+Run phase 2 with:
+- `clarify: <RUN_CLARIFY>`
+- `async: <RUN_ASYNC>`
+
+When building the final `chain`, insert `<OPTIONAL_RESEARCH_STEPS>` first (if any), then run mode-specific steps.
 
 ### Fast Mode (default) — Parallel Documenters
 
@@ -68,35 +229,25 @@ Select chain by speed profile:
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
-    {
-      "agent": "scout",
-      "task": "Scout project context for planning topic '<TOPIC>' (<MODE>). Focus on relevant files, constraints, existing architecture, and test patterns.",
-      "output": "scout-context.md"
-    },
-    {
-      "agent": "context-builder",
-      "task": "Build anchored planning context for '<TOPIC>' (<MODE>). Include constraints from .tf/AGENTS.md and .tf/knowledge when available. If --from path provided, include it in synthesis.",
-      "reads": ["scout-context.md"],
-      "output": "anchor-context.md"
-    },
+    <OPTIONAL_RESEARCH_STEPS>,
     {
       "parallel": [
         {
           "agent": "documenter",
           "task": "Draft a concise Product Requirements Document for '<TOPIC>' (<MODE>) using anchored context. Write final PRD to '<PLAN_DIR>/01-prd.md' with sections: Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope.",
-          "reads": ["anchor-context.md"],
+          "reads": <DOC_READS>,
           "output": "prd-draft.md"
         },
         {
           "agent": "documenter",
           "task": "Draft a technical spec for '<TOPIC>' (<MODE>) using anchored context. Write final spec to '<PLAN_DIR>/02-spec.md' with sections: Architecture, Components, Data Flow, Error Handling, Observability, Testing Strategy, Rollout & Risks.",
-          "reads": ["anchor-context.md"],
+          "reads": <DOC_READS>,
           "output": "spec-draft.md"
         },
         {
           "agent": "documenter",
           "task": "Create a canonical design document for '<TOPIC>' (<MODE>) and write final file to '<PLAN_DIR>/00-design.md'. Synthesize anchored context into a concise implementation-facing design brief with sections: Context, Chosen Architecture, Component Contracts, Key Flows, Risks, and Decisions.",
-          "reads": ["anchor-context.md"],
+          "reads": <DOC_READS>,
           "output": "design-draft.md"
         }
       ],
@@ -106,7 +257,7 @@ Select chain by speed profile:
     {
       "agent": "planner",
       "task": "Create a concrete implementation plan for '<TOPIC>' (<MODE>) and write final plan to '<PLAN_DIR>/03-implementation-plan.md'. Use small actionable tasks, explicit verification, dependencies, and rollback notes. Synthesize PRD intent + spec architecture + design contracts into actionable plan.",
-      "reads": ["anchor-context.md", "prd-draft.md", "spec-draft.md", "design-draft.md"],
+      "reads": <PLAN_READS>,
       "output": "plan-draft.md"
     }
   ]
@@ -125,51 +276,43 @@ Select chain by speed profile:
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
-    {
-      "agent": "scout",
-      "task": "Scout project context for planning topic '<TOPIC>' (<MODE>). Focus on relevant files, constraints, existing architecture, and test patterns.",
-      "output": "scout-context.md"
-    },
-    {
-      "agent": "context-builder",
-      "task": "Build anchored planning context for '<TOPIC>' (<MODE>). Include constraints from .tf/AGENTS.md and .tf/knowledge when available. If --from path provided, include it in synthesis.",
-      "reads": ["scout-context.md"],
-      "output": "anchor-context.md"
-    },
+    <OPTIONAL_RESEARCH_STEPS>,
     {
       "agent": "documenter",
       "task": "Draft a concise Product Requirements Document for '<TOPIC>' (<MODE>) using anchored context. Write final PRD to '<PLAN_DIR>/01-prd.md' with sections: Problem Statement, Solution, User Stories, Implementation Decisions, Testing Decisions, Out of Scope.",
-      "reads": ["anchor-context.md"],
+      "reads": <DOC_READS>,
       "output": "prd-draft.md"
     },
     {
       "agent": "documenter",
       "task": "Draft a technical spec for '<TOPIC>' (<MODE>) using anchored context and PRD intent. Write final spec to '<PLAN_DIR>/02-spec.md' with sections: Architecture, Components, Data Flow, Error Handling, Observability, Testing Strategy, Rollout & Risks.",
-      "reads": ["anchor-context.md", "prd-draft.md"],
+      "reads": <SPEC_READS>,
       "output": "spec-draft.md"
     },
     {
       "agent": "documenter",
       "task": "Create a canonical design document for '<TOPIC>' (<MODE>) and write final file to '<PLAN_DIR>/00-design.md'. Synthesize anchored context + PRD + spec into a concise implementation-facing design brief with sections: Context, Chosen Architecture, Component Contracts, Key Flows, Risks, and Decisions.",
-      "reads": ["anchor-context.md", "prd-draft.md", "spec-draft.md"],
+      "reads": <DESIGN_READS>,
       "output": "design-draft.md"
     },
     {
       "agent": "planner",
       "task": "Create a concrete implementation plan for '<TOPIC>' (<MODE>) and write final plan to '<PLAN_DIR>/03-implementation-plan.md'. Use small actionable tasks, explicit verification, dependencies, and rollback notes.",
-      "reads": ["anchor-context.md", "prd-draft.md", "spec-draft.md", "design-draft.md"],
+      "reads": <PLAN_READS>,
       "output": "plan-draft.md"
     }
   ]
 }
 ```
 
+When no research step is selected, omit `<OPTIONAL_RESEARCH_STEPS>` entirely and do not include research files in reads.
+
 If async=true:
-- Return run id/status immediately.
+- Return run id/status immediately for phase 2.
 - State artifact path root `<CHAIN_DIR>`.
 - Tell user to check with `subagent_status`.
 
-## 4) Final Response
+## 7) Final Response
 
 When synchronous run completes:
 1. Confirm created planning docs in `<PLAN_DIR>`:
@@ -177,7 +320,12 @@ When synchronous run completes:
    - `01-prd.md`
    - `02-spec.md`
    - `03-implementation-plan.md`
-2. Summarize key decisions in 5-10 bullets.
-3. Note mode used (fast/thorough).
-4. Recommend next step:
-   - ` /tk-ticketize <PLAN_DIR>/03-implementation-plan.md`
+2. Report research routing decision:
+   - researcher used? yes/no
+   - librarian used? yes/no
+3. If used, list persisted knowledge files under `<KNOWLEDGE_TOPIC_DIR>`.
+4. Summarize key decisions in 5-10 bullets.
+5. Note mode used (fast/thorough).
+6. Recommend next step:
+   - `/tk-plan-check <PLAN_DIR>` (recommended quality gate)
+   - then `/tk-ticketize <PLAN_DIR>/03-implementation-plan.md`
