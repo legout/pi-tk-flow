@@ -1,6 +1,6 @@
 ---
 id: ptf-wvze
-status: open
+status: closed
 deps: [ptf-1q8n, ptf-bv4b]
 links: []
 created: 2026-03-01T11:18:37Z
@@ -20,5 +20,9 @@ Refs: PRD US-3, US-4; Spec C-2, C-3, D-3, D-4, E-7; Plan Task 5.
 
 ## Acceptance Criteria
 
-- [ ] Search filters title/description with immediate updates\n- [ ] Tag and assignee filters apply and clear independently\n- [ ] q,r,o,e shortcuts behave as specified\n- [ ] 1-4 open expected plan docs for current context\n- [ ] Pager/editor failures are handled without crashing
+- [x] Search filters title/description with immediate updates
+- [x] Tag and assignee filters apply and clear independently
+- [x] q,r,o,e shortcuts behave as specified
+- [x] 1-4 open expected plan docs for current context
+- [x] Pager/editor failures are handled without crashing
 

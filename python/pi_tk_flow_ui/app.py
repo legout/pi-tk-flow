@@ -519,19 +519,26 @@ class TicketBoard(Static):
             return
         
         # Find the implementation plan file
-        plan_file = plan_dir / "03-implementation-plan.md"
-        if not plan_file.exists():
-            # Try other plan files
-            for alt in ["01-prd.md", "02-spec.md", "03-plan.md", "04-progress.md"]:
-                alt_path = plan_dir / alt
-                if alt_path.exists():
-                    plan_file = alt_path
-                    break
+        plan_file = None
+        for candidate in ["03-implementation-plan.md", "01-prd.md", "02-spec.md", "03-plan.md", "04-progress.md"]:
+            candidate_path = plan_dir / candidate
+            if candidate_path.exists():
+                plan_file = candidate_path
+                break
+        
+        if plan_file is None:
+            self.notify(f"No plan documents found in {plan_dir}", severity="warning")
+            return
         
         self._open_file(plan_file)
     
     def _open_file(self, file_path: Path) -> None:
-        """Open a file using PAGER or EDITOR."""
+        """Open a file using PAGER or EDITOR (safe implementation without shell)."""
+        if not file_path.exists():
+            self.notify(f"File not found: {file_path}", severity="error")
+            return
+        
+        # Determine command to use
         editor = os.environ.get("EDITOR", "").strip()
         pager = os.environ.get("PAGER", "").strip()
         
@@ -556,15 +563,16 @@ class TicketBoard(Static):
                     break
         
         if not cmd_parts:
-            self.notify("No editor or pager found. Set $EDITOR or $PAGER.", severity="error")
+            self.notify("No pager or editor found. Set $PAGER or $EDITOR.", severity="error")
             return
         
+        # Run the command with terminal suspend (no shell)
         try:
             with self.app.suspend():
                 result = subprocess.run(cmd_parts, check=False)
                 exit_code = result.returncode
         except Exception as e:
-            self.notify(f"Failed to open file: {e}", severity="error")
+            self.notify(f"Failed to suspend terminal: {e}", severity="error")
             return
         
         if exit_code != 0:
