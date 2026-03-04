@@ -32,9 +32,9 @@ Test suite for validating flag parsing, validation, and routing behavior in `/tk
 
 | Test ID | Command | Expected Behavior | Status |
 |---------|---------|-------------------|--------|
-| A.3.1 | `/tk-implement TICKET-123 --hands-free --clarify` | Clarify TUI, then hands-free overlay | ⬜ |
-| A.3.2 | `/tk-implement TICKET-123 --dispatch --clarify` | Clarify TUI, then dispatch | ⬜ |
-| A.3.3 | `/tk-implement TICKET-123 --async --clarify` | Legacy: async wins, clarify=false | ⬜ |
+| A.3.1 | `/tk-implement TICKET-123 --hands-free --clarify` | Clarify TUI, then hands-free overlay | ✅ |
+| A.3.2 | `/tk-implement TICKET-123 --dispatch --clarify` | Clarify TUI, then dispatch | ✅ |
+| A.3.3 | `/tk-implement TICKET-123 --async --clarify` | Legacy: async wins, clarify=false | ✅ |
 
 ## B. Routing and Mode Behavior
 
