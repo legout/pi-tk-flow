@@ -1,5 +1,6 @@
 ---
 description: Refine planning artifacts using plan gap analysis + review findings
+model: claude-sonnet-4-20250514
 ---
 
 Refine planning docs from `$@`.

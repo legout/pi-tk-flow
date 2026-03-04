@@ -1,5 +1,6 @@
 ---
 description: Convert planning docs into tk-ready vertical-slice tickets (creates by default, preview with --dry-run)
+model: claude-haiku-4-5
 ---
 
 Create ticket breakdown from `$@`.

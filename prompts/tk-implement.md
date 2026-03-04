@@ -1,5 +1,6 @@
 ---
 description: Analyze and implement any tk ticket with main-agent path selection
+model: claude-haiku-4-5, claude-sonnet-4-20250514
 ---
 
 Implement ticket from `$@` (parsed into `<TICKET_ID>` + flags).

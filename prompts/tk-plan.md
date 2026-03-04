@@ -1,5 +1,6 @@
 ---
 description: Build planning artifacts (PRD, spec, implementation plan) for a new feature/refactor/simplification using subagents
+model: claude-sonnet-4-20250514
 ---
 
 Create planning docs from `$@`.
