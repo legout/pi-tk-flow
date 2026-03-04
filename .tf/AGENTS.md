@@ -12,3 +12,8 @@ Avoid ticket-specific trivia and duplicates.
 - **When to apply:** <situation>
 - **Lesson:** <concise reusable guidance>
 - **Source tickets:** <ticket-id list>
+
+### Recursion Guard Pattern for Nested Commands
+- **When to apply:** When implementing command wrappers that invoke themselves or similar commands (e.g., pi calling pi, nested tk-implement)
+- **Lesson:** Use an environment variable as a recursion guard. Set `ENV_VAR=1` when invoking the nested command, check for its presence at entry to skip wrapper logic and pass through to core execution. This prevents infinite loops while allowing the nested call to run the actual implementation.
+- **Source tickets:** ptf-53pu (2026-03-04)

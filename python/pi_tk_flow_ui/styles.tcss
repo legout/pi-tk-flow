@@ -1,0 +1,177 @@
+/* Textual CSS for TicketflowApp */
+
+Screen {
+    align: center middle;
+}
+
+/* Header and Footer */
+Header {
+    dock: top;
+    height: 1;
+    content-align: center middle;
+    background: $primary;
+    color: $text;
+}
+
+Footer {
+    dock: bottom;
+    height: 1;
+    background: $primary-darken-2;
+    color: $text;
+}
+
+/* Tabbed Content */
+TabbedContent {
+    height: 1fr;
+    padding: 0;
+}
+
+TabPane {
+    height: 1fr;
+    padding: 0;
+}
+
+/* Topic Browser Styles */
+#topic-sidebar {
+    width: 40%;
+    border: solid $primary;
+    padding: 1;
+}
+
+#topic-detail {
+    width: 60%;
+    border: solid $primary;
+    padding: 1;
+}
+
+#topic-list {
+    height: 1fr;
+    border: solid $primary-darken-2;
+    padding: 0;
+}
+
+#topic-search {
+    margin-bottom: 1;
+}
+
+#topic-detail-content {
+    height: 1fr;
+}
+
+/* Ticket Board Styles */
+#board-container {
+    width: 65%;
+    border: solid $primary;
+    padding: 1;
+}
+
+#board-header {
+    height: auto;
+    padding-bottom: 1;
+    border-bottom: solid $primary-darken-2;
+    margin-bottom: 1;
+}
+
+#filter-bar {
+    height: auto;
+    padding-bottom: 1;
+    margin-bottom: 1;
+}
+
+#filter-bar Input {
+    width: 1fr;
+    margin-right: 1;
+}
+
+#filter-bar Button {
+    width: auto;
+}
+
+#board-columns {
+    height: 1fr;
+}
+
+.board-column {
+    width: 1fr;
+    border: solid $primary-darken-2;
+    margin: 0 1;
+    padding: 0;
+}
+
+.board-column:first-child {
+    margin-left: 0;
+}
+
+.board-column:last-child {
+    margin-right: 0;
+}
+
+.column-header {
+    text-align: center;
+    border-bottom: solid $primary-darken-2;
+    padding: 1;
+    background: $primary-darken-1;
+}
+
+#list-ready, #list-blocked, #list-in-progress, #list-closed {
+    height: 1fr;
+    border: none;
+    padding: 0;
+}
+
+#ticket-detail-panel {
+    width: 35%;
+    border: solid $primary;
+    padding: 1;
+}
+
+#detail-header {
+    height: auto;
+    padding-bottom: 1;
+    border-bottom: solid $primary-darken-2;
+    margin-bottom: 1;
+}
+
+#detail-scroll {
+    height: 1fr;
+}
+
+#ticket-detail-content {
+    height: auto;
+}
+
+/* List Item Styling */
+ListView > ListItem {
+    padding: 0 1;
+}
+
+ListView > ListItem.--highlight {
+    background: $primary-darken-2;
+}
+
+ListView:focus > ListItem.--highlight {
+    background: $primary;
+}
+
+/* Scrollbars */
+VerticalScroll {
+    scrollbar-size: 1 1;
+}
+
+/* Notifications */
+.notification {
+    background: $surface;
+    border: solid $primary;
+}
+
+.notification.--information {
+    border: solid $success;
+}
+
+.notification.--warning {
+    border: solid $warning;
+}
+
+.notification.--error {
+    border: solid $error;
+}

@@ -1,0 +1,61 @@
+epic:
+  title: "Sample Epic for Testing"
+  type: epic
+  description: |
+    A sample epic for testing the TUI implementation.
+    This epic includes multiple slices to test various scenarios.
+  tags: [testing, ui]
+
+slices:
+  - key: S1
+    title: "Ready slice - no dependencies"
+    type: feature
+    afk_hitl: AFK
+    priority: 1
+    tags: [feature, ui, foundation]
+    description: |
+      This slice has no dependencies and should appear in the READY column.
+      It tests the basic ticket loading and classification.
+    blocked_by: []
+
+  - key: S2
+    title: "Blocked slice - depends on S1"
+    type: feature
+    afk_hitl: AFK
+    priority: 2
+    tags: [feature, ui, dependent]
+    description: |
+      This slice depends on S1 and should appear in the BLOCKED column
+      until S1 is closed.
+    blocked_by: [S1]
+
+  - key: S3
+    title: "In Progress slice"
+    type: chore
+    afk_hitl: AFK
+    priority: 1
+    tags: [chore, ui]
+    assignee: "testuser"
+    description: |
+      This slice is in progress. Status will be determined by tk CLI.
+    blocked_by: []
+
+  - key: S4
+    title: "Closed slice"
+    type: feature
+    afk_hitl: AFK
+    priority: 3
+    tags: [feature, ui]
+    external_ref: "github.com/org/repo/issues/42"
+    description: |
+      This slice should be closed. Status will be determined by tk CLI.
+    blocked_by: []
+
+  - key: S5
+    title: "Multiple dependencies"
+    type: feature
+    priority: 2
+    tags: [feature, complex]
+    description: |
+      This slice has multiple dependencies and tests dependency resolution.
+    blocked_by: [S1, S2]
