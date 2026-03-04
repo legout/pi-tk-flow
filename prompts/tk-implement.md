@@ -250,6 +250,26 @@ After completion, store git hash for cache validation:
 git rev-parse HEAD > .subagent-runs/<TICKET_ID>/.scout-git-hash 2>/dev/null || true
 ```
 
+**CRITICAL: Handle subagent session directory structure**
+The subagent chain creates a session subdirectory (e.g., `.subagent-runs/<TICKET_ID>/<session-id>/`) and writes output files there. After the chain completes, locate and copy `anchor-context.md` to the expected location:
+
+```bash
+# Find the most recent anchor-context.md from chain execution
+# (It may be in a session subdirectory like <hash>/anchor-context.md)
+ANCHOR_FILE=$(find .subagent-runs/<TICKET_ID> -name "anchor-context.md" -type f 2>/dev/null | head -1)
+
+if [ -n "$ANCHOR_FILE" ] && [ "$ANCHOR_FILE" != ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
+  cp "$ANCHOR_FILE" .subagent-runs/<TICKET_ID>/anchor-context.md
+fi
+
+# Verify the file exists at the expected location before proceeding
+if [ ! -f ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
+  echo "ERROR: anchor-context.md not found after anchoring chain"
+  echo "Searched in: .subagent-runs/<TICKET_ID>/"
+  # STOP and report the error
+fi
+```
+
 ### 1d. Cache-Hit Path (Reuse scout output)
 
 Use this when `CACHE_VALID=true`:
@@ -278,6 +298,14 @@ Use this when `CACHE_VALID=true`:
     }
   ]
 }
+```
+
+After chain completion, handle session directory structure:
+```bash
+ANCHOR_FILE=$(find .subagent-runs/<TICKET_ID> -name "anchor-context.md" -type f 2>/dev/null | head -1)
+if [ -n "$ANCHOR_FILE" ] && [ "$ANCHOR_FILE" != ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
+  cp "$ANCHOR_FILE" .subagent-runs/<TICKET_ID>/anchor-context.md
+fi
 ```
 
 ### 1e. If No context-merger Agent Exists
@@ -322,9 +350,14 @@ If `context-merger` is not available, use this fallback chain:
 }
 ```
 
-After successful fallback run that included a fresh scout, store git hash for cache validation:
+After successful fallback run that included a fresh scout, store git hash and handle session directory:
 ```bash
 git rev-parse HEAD > .subagent-runs/<TICKET_ID>/.scout-git-hash 2>/dev/null || true
+
+ANCHOR_FILE=$(find .subagent-runs/<TICKET_ID> -name "anchor-context.md" -type f 2>/dev/null | head -1)
+if [ -n "$ANCHOR_FILE" ] && [ "$ANCHOR_FILE" != ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
+  cp "$ANCHOR_FILE" .subagent-runs/<TICKET_ID>/anchor-context.md
+fi
 ```
 
 If `context-merger` is missing **and** `CACHE_VALID=true`, use this cache-hit fallback:
@@ -353,6 +386,14 @@ If `context-merger` is missing **and** `CACHE_VALID=true`, use this cache-hit fa
     }
   ]
 }
+```
+
+After cache-hit fallback chain completion:
+```bash
+ANCHOR_FILE=$(find .subagent-runs/<TICKET_ID> -name "anchor-context.md" -type f 2>/dev/null | head -1)
+if [ -n "$ANCHOR_FILE" ] && [ "$ANCHOR_FILE" != ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
+  cp "$ANCHOR_FILE" .subagent-runs/<TICKET_ID>/anchor-context.md
+fi
 ```
 
 **Time saved:**
@@ -434,8 +475,13 @@ If `RUN_INTERACTIVE`, `RUN_HANDS_FREE`, or `RUN_DISPATCH` is true:
 
 ### 2d. Session Metadata Persistence
 
-On successful `interactive_shell` invocation, write session metadata:
+On successful `interactive_shell` invocation, persist session metadata and emit breadcrumbs.
 
+**Implementation Steps:**
+
+1. **Extract sessionId from result** - The `interactive_shell` call returns a `sessionId` (e.g., "calm-reef")
+
+2. **Write session.json** to `.subagent-runs/<TICKET_ID>/session.json`:
 ```json
 {
   "mode": "<interactive|hands-free|dispatch>",
@@ -446,9 +492,7 @@ On successful `interactive_shell` invocation, write session metadata:
 }
 ```
 
-Write to: `.subagent-runs/<TICKET_ID>/session.json`
-
-**Console breadcrumbs to emit:**
+3. **Emit console breadcrumbs** immediately after successful invocation:
 ```
 ═══════════════════════════════════════════════════════════════
   Interactive Session Started
@@ -466,14 +510,146 @@ Write to: `.subagent-runs/<TICKET_ID>/session.json`
 ═══════════════════════════════════════════════════════════════
 ```
 
+**Failure Handling:**
+
+If `interactive_shell` invocation fails:
+1. **Do NOT write session.json** - partial/corrupt files must not be created
+2. **Emit actionable error message**:
+   ```
+   ERROR: Failed to start interactive session
+   
+   Possible causes:
+   - Invalid command syntax in INNER_CMD
+   - CLI agent not available (pi, claude, gemini, etc.)
+   - Resource constraints
+   
+   Remediation:
+   - Check that the CLI agent is installed: which pi
+   - Verify the ticket ID exists: tk show <TICKET_ID>
+   - Try without interactive flags for non-interactive execution
+   - Check system resources (memory, disk space)
+   ```
+3. **Preserve existing artifacts** - Do not delete/modify any existing `.subagent-runs/<TICKET_ID>/` contents
+4. **Exit with error status** - Do not continue to Path A/B/C execution
+
+**Non-Interactive Guard:**
+
+Session artifacts are ONLY created when interactive flags (`--interactive`, `--hands-free`, `--dispatch`) are present. For legacy non-interactive runs:
+- `--async` alone → No session.json created
+- No flags → No session.json created
+- This preserves backward compatibility with existing automation
+
+**Session Status Lifecycle:**
+
+| Status | When Set | Description |
+|--------|----------|-------------|
+| `pending` | On successful interactive_shell invocation | Session is active/running |
+| `completed` | When session ends successfully | Normal termination |
+| `failed` | When session ends with error | Error/exception occurred |
+
+Status updates after initial creation are handled by session monitoring (not in scope for ptf-102j).
+
+**Example Session.json Files:**
+
+Interactive mode:
+```json
+{
+  "mode": "interactive",
+  "sessionId": "calm-reef",
+  "startedAt": "2026-03-04T12:34:56.789Z",
+  "command": "pi \"/tk-implement TICKET-123\"",
+  "status": "pending"
+}
+```
+
+Hands-free mode with clarify:
+```json
+{
+  "mode": "hands-free",
+  "sessionId": "wise-owl",
+  "startedAt": "2026-03-04T12:35:01.234Z",
+  "command": "pi \"/tk-implement TICKET-123 --clarify\"",
+  "status": "pending"
+}
+```
+
+Dispatch mode:
+```json
+{
+  "mode": "dispatch",
+  "sessionId": "bright-star",
+  "startedAt": "2026-03-04T12:35:12.567Z",
+  "command": "pi \"/tk-implement TICKET-123\"",
+  "status": "pending"
+}
+```
+
 ### 2e. Execution Flow
 
-1. Call `interactive_shell` with appropriate mode parameters
-2. If successful, persist `session.json` and emit breadcrumbs
-3. Set `PI_TK_INTERACTIVE_CHILD=1` env var in nested command context
-4. Return control to user (interactive mode) or agent (hands-free/dispatch)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Interactive Mode Router Flow                               │
+├─────────────────────────────────────────────────────────────┤
+│  1. Check recursion guard (PI_TK_INTERACTIVE_CHILD=1)       │
+│     → If set: skip to Path A/B/C execution                  │
+│                                                              │
+│  2. Validate flag combinations                               │
+│     → If invalid: emit error, STOP                          │
+│                                                              │
+│  3. Build INNER_CMD (nested command without interactive)    │
+│                                                              │
+│  4. Call interactive_shell with mode parameters             │
+│     ├─ On SUCCESS:                                          │
+│     │  a. Write session.json with status "pending"          │
+│     │  b. Emit console breadcrumbs                          │
+│     │  c. Return control (user/agent/background)            │
+│     │                                                       │
+│     └─ On FAILURE:                                          │
+│        a. Do NOT write session.json                         │
+│        b. Emit actionable error message                     │
+│        c. STOP (do not proceed to Path A/B/C)               │
+│                                                              │
+│  5. SKIP Path A/B/C - nested command will run them          │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Important:** When any interactive mode is active, SKIP Path A/B/C execution in sections 3-4. The nested command (without interactive flags) will execute the full Path A/B/C flow.
+**Detailed Steps:**
+
+1. **Check recursion sentinel** (`PI_TK_INTERACTIVE_CHILD=1`)
+   - If set: We're inside a nested invocation, skip interactive routing
+   - If not set: Proceed with interactive mode handling
+
+2. **Validate flags** (Section 2b validation matrix)
+   - Unknown flags → error with help message
+   - Invalid combinations → specific error message
+   - Valid flags → proceed
+
+3. **Build inner command** (`INNER_CMD`)
+   - Base: `pi "/tk-implement <TICKET_ID>"`
+   - Preserve `--clarify` if set: `pi "/tk-implement <TICKET_ID> --clarify"`
+   - Never pass interactive flags to inner command
+
+4. **Invoke interactive_shell**
+   - Interactive mode: blocking, user-supervised
+   - Hands-free mode: non-blocking, agent-monitored with polling
+   - Dispatch mode: background, notification on completion
+
+5. **Handle result:**
+   - **Success:** Write session.json, emit breadcrumbs, return
+   - **Failure:** Emit error guidance, cleanup (no partial files), exit
+
+6. **Skip Path A/B/C** when interactive mode is active
+   - The nested command (without interactive flags) will execute the full Path A/B/C flow
+   - This prevents double execution of implementation logic
+
+**Environment Variable Handling:**
+
+Set `PI_TK_INTERACTIVE_CHILD=1` in the nested command environment to prevent infinite recursion:
+```bash
+PI_TK_INTERACTIVE_CHILD=1 pi "/tk-implement <TICKET_ID>"
+```
+
+**Important:** When any interactive mode is active, SKIP Path A/B/C execution in sections 3-5. The nested command (without interactive flags) will execute the full Path A/B/C flow.
 
 ## 3. YOU Decide the Implementation Path
 
