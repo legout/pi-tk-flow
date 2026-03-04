@@ -1,6 +1,6 @@
 ---
 name: tk-path-b
-description: Standard tk workflow (scout -> context-builder -> planner -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tk-closer)
+description: Standard tk workflow (scout -> context-builder -> planner-b -> worker -> reviewer+tester -> fixer -> reviewer+tester re-check -> tk-closer)
 ---
 
 ## scout

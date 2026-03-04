@@ -1,6 +1,6 @@
 ---
 id: ptf-vln5
-status: open
+status: closed
 deps: [ptf-niv3]
 links: []
 created: 2026-03-04T11:02:50Z
@@ -44,3 +44,7 @@ Verification complete via /tk-implement. All 5 acceptance criteria verified:
 
 Verification results written to tests/tk-implement/routing-verification.md.
 Implementation is complete and verified. Session metadata write implementation remains blocked by ptf-102j.
+
+**2026-03-04T14:12:48Z**
+
+Implementation verified: All 5 acceptance criteria met. Section 2 router correctly implements recursion guard, mode routing, and session metadata schema. Session metadata write remains blocked by ptf-102j. See tests/tk-implement/routing-verification.md for verification results.

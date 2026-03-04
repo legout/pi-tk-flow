@@ -76,12 +76,16 @@ Set:
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
-  - Required agents: `scout`, `plan-gap-analyzer`, `plan-reviewer`, `planner`, `documenter`
+  - Required agents: `scout`, `plan-gap-analyzer`, `plan-reviewer`, `planner-b`, `planner-c`, `documenter`
 - If any required agent is missing, STOP and report missing names.
 
-## 4) Phase 1 (always sync): analyze + review
+## 4) Phase 1: analyze + review (skip if already available)
 
-Run analysis first so refinement is guided by concrete gaps.
+If `<PLAN_DIR>/05-plan-gaps.md` **and** `<PLAN_DIR>/06-plan-review.md` already exist (e.g., from `/tk-plan-check`), skip phase 1. Instead:
+- Copy those two files into `${CHAIN_DIR}/plan-gaps.md` and `${CHAIN_DIR}/plan-review.md`.
+- Ensure knowledge snapshots exist (copy to `<KNOWLEDGE_TOPIC_DIR>/plan-gaps.md` and `<KNOWLEDGE_TOPIC_DIR>/plan-review.md` if missing).
+
+Otherwise, run analysis first so refinement is guided by concrete gaps.
 
 Use phase-1 runtime defaults:
 - `clarify: false`
@@ -150,7 +154,7 @@ If `NEEDS_REFINEMENT=true`, run phase 2 with:
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
     {
-      "agent": "planner",
+      "agent": "planner-b",
       "task": "Refine '<PLAN_DIR>/03-implementation-plan.md' using plan-gaps.md and plan-review.md. Write final refined plan back to '<PLAN_DIR>/03-implementation-plan.md' and persist a knowledge snapshot at '<KNOWLEDGE_TOPIC_DIR>/implementation-plan-refined.md'.",
       "reads": <REFINE_PLAN_READS>,
       "output": "plan-refined.md"

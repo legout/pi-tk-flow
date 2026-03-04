@@ -26,3 +26,17 @@ Refs: PRD US-3, US-4; Spec C-2, C-3, D-3, D-4, E-7; Plan Task 5.
 - [x] 1-4 open expected plan docs for current context
 - [x] Pager/editor failures are handled without crashing
 
+
+## Notes
+
+**2026-03-04T15:47:50Z**
+
+Implementation completed:
+- Fixed missing-file early check in TicketBoard._open_file() for error handling
+- Improved action_open_in_editor() fallback with clear "No plan documents found" warning
+- Fixed duplicate test method test_open_plan_doc_no_selection_shows_warning
+- Strengthened weak assertion in test_tag_filter_is_case_insensitive
+- Added test_no_plan_documents_shows_warning for fallback branch coverage
+
+All 42 tests pass. Post-fix review confirmed no new issues.
+Commit: b67f06f

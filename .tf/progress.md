@@ -90,3 +90,64 @@ Append one entry per implementation run.
 - Tests: verified (4/4 acceptance criteria passed)
 - Commit: none
 - Chain: .subagent-runs/ptf-erm8/2a37a754
+
+## 2026-03-04T15:42:10+01:00 | ptf-102j | in_progress
+
+- Path: B
+- Research: no
+- Summary: Added session metadata persistence and console breadcrumbs documentation for interactive modes. Two major issues remain: atomic write guidance for session.json and recursion-guard inconsistency between Section 2b vs 2e.
+- Files: prompts/tk-implement.md
+- Tests: not run (documentation change)
+- Commit: a9b6f68
+- Chain: .subagent-runs/ptf-102j/727fea0a
+- Blockers: Major issues in post-fix review - partial-file cleanup underspecified, recursion-guard behavior inconsistent
+
+## 2026-03-04T15:47:00+01:00 | ptf-bv4b | closed
+
+- Path: B
+- Research: no
+- Summary: Implemented TopicScanner and Topics tab with live scanning, grouping by type, detail panel, and graceful empty state handling. Post-implementation fixes: shell injection vulnerability resolved, case-insensitive topic sorting.
+- Files: python/pi_tk_flow_ui/topic_scanner.py, python/pi_tk_flow_ui/app.py, python/pi_tk_flow_ui/styles.tcss, tests/test_topic_scanner.py
+- Tests: passed (58/58 including 16 topic scanner tests)
+- Commit: 6733bb3
+- Chain: .subagent-runs/ptf-bv4b/57fe5a82
+
+## 2026-03-04T16:08:44+01:00 | ptf-102j | closed
+
+- Path: B
+- Research: no
+- Summary: Fixed recursion guard env var in INNER_CMD and implemented atomic session.json writes using temp-file + sync + rename pattern with explicit temp cleanup on failure. All acceptance criteria met.
+- Files: prompts/tk-implement.md (Section 2b, 2d, 2e)
+- Tests: verified (no tests - documentation change)
+- Commit: 4d3f9a2
+- Chain: .subagent-runs/ptf-102j/0b765ff3/00ec7f68
+
+## 2026-03-04T16:45:06+01:00 | ptf-19a3 | closed
+
+- Path: A
+- Research: no
+- Summary: Clarified --interactive compatibility matrix wording and added explicit legacy --async usage guidance to documentation. Both minor issues from review resolved.
+- Files: README.md, skills/tk-workflow/SKILL.md
+- Tests: passed (documentation verification)
+- Commit: b421d03
+- Chain: .subagent-runs/ptf-19a3/255fe959
+
+## 2026-03-04T16:46:05+01:00 | ptf-wvze | closed
+
+- Path: A
+- Research: no
+- Summary: Fixed ticket/topic TUI filtering and keyboard shortcuts - added missing-file early check, improved plan doc fallback handling, fixed duplicate test method, strengthened weak assertions.
+- Files: python/pi_tk_flow_ui/app.py, tests/test_app.py
+- Tests: passed (42/42)
+- Commit: b67f06f
+- Chain: .subagent-runs/ptf-wvze/dc7dd16d
+
+## 2026-03-04T16:09:49+00:00 | ptf-n5ir | closed
+
+- Path: A
+- Research: no
+- Summary: Verified all 4 acceptance criteria for UI documentation and commands - /tf ui --web prints textual serve command, output includes security warnings, README has install/run snippets, .tf/knowledge/README.md documents topic naming conventions.
+- Files: none (verification only)
+- Tests: verified (4/4 acceptance criteria passed)
+- Commit: none
+- Chain: .subagent-runs/ptf-n5ir/3821c5b8

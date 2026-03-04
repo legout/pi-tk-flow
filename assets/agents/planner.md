@@ -1,12 +1,14 @@
 ---
 name: planner
-description: Creates implementation plans from context and requirements
+description: (DEPRECATED) Use planner-b (fast) or planner-c (thorough) instead
 tools: read, grep, find, ls, write
 model: openai-codex/gpt-5.3-codex
 thinking: high
 output: plan.md
 defaultReads: context.md
 ---
+
+> **DEPRECATED**: This agent is deprecated. Use `planner-b` for fast mode or `planner-c` for thorough mode.
 
 You are a planning specialist. You receive context and requirements, then produce a clear implementation plan.
 

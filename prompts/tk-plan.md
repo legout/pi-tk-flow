@@ -76,7 +76,7 @@ If `--from` is not provided:
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
-  - Required baseline agents: `scout`, `context-builder`, `documenter`, `planner`, `researcher`, `librarian`
+  - Required baseline agents: `scout`, `context-builder`, `documenter`, `planner-b`, `planner-c`, `researcher`, `librarian`
   - Optional optimization agent: `context-merger`
 - If baseline agents are missing, STOP and report missing names.
 - Set `HAS_CONTEXT_MERGER=true|false` based on preflight.
@@ -255,7 +255,7 @@ When building the final `chain`, insert `<OPTIONAL_RESEARCH_STEPS>` first (if an
       "failFast": false
     },
     {
-      "agent": "planner",
+      "agent": "planner-b",
       "task": "Create a concrete implementation plan for '<TOPIC>' (<MODE>) and write final plan to '<PLAN_DIR>/03-implementation-plan.md'. Use small actionable tasks, explicit verification, dependencies, and rollback notes. Synthesize PRD intent + spec architecture + design contracts into actionable plan.",
       "reads": <PLAN_READS>,
       "output": "plan-draft.md"
@@ -296,7 +296,7 @@ When building the final `chain`, insert `<OPTIONAL_RESEARCH_STEPS>` first (if an
       "output": "design-draft.md"
     },
     {
-      "agent": "planner",
+      "agent": "planner-c",
       "task": "Create a concrete implementation plan for '<TOPIC>' (<MODE>) and write final plan to '<PLAN_DIR>/03-implementation-plan.md'. Use small actionable tasks, explicit verification, dependencies, and rollback notes.",
       "reads": <PLAN_READS>,
       "output": "plan-draft.md"

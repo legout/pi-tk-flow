@@ -88,7 +88,7 @@ OR: "None - existing knowledge sufficient"
 - How proposals should be validated
 
 ## Recommendations for Next Step
-- Concrete guidance for planner/documenter phases
+- Concrete guidance for planner-b/planner-c/documenter phases
 
 ## Lessons Applied
 - Relevant items from `.tf/AGENTS.md`

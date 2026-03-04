@@ -50,6 +50,41 @@ Install once (if missing):
 pi install npm:pi-subagents
 ```
 
+### pi-prompt-template-model extension (optional)
+
+The `pi-prompt-template-model` extension provides automatic model switching for tk commands based on authoritative mappings. When installed, commands automatically use optimized models without manual `--model` flags.
+
+**Install:**
+
+```bash
+pi install npm:pi-prompt-template-model
+```
+
+**Behavior:**
+
+| Aspect | Behavior |
+|--------|----------|
+| **Switch** | Commands automatically switch to their mapped model on invocation |
+| **Fallback** | If a command has no mapping, it uses the default model (no change) |
+| **Restore** | After command completes, the previous model is restored |
+| **No extension** | Commands execute normally with whatever model is active |
+
+**Authoritative Command→Model Mapping:**
+
+| Command | Model(s) |
+|---------|----------|
+| `/tk-bootstrap` | `claude-haiku-4-5` |
+| `/tk-brainstorm` | `claude-sonnet-4-20250514` |
+| `/tk-implement` | `claude-haiku-4-5`, `claude-sonnet-4-20250514` |
+| `/tk-plan` | `claude-sonnet-4-20250514` |
+| `/tk-plan-check` | `claude-haiku-4-5` |
+| `/tk-plan-refine` | `claude-sonnet-4-20250514` |
+| `/tk-ticketize` | `claude-haiku-4-5` |
+
+> **Note:** This mapping table is the **canonical source** for prompt and documentation alignment. When updating model assignments, update this table first.
+
+Commands continue to execute normally when the extension is not installed—no error or warning is emitted.
+
 ## Bootstrap templates
 
 ```bash
