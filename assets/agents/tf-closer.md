@@ -18,6 +18,7 @@ Goal:
 - Close the ticket when completion gates pass.
 - Otherwise keep it in_progress (or blocked when explicitly appropriate).
 - Write a concise close summary artifact.
+- Persist a compact durable ticket artifact to `.tf/tickets/<ticket-id>/close-summary.md`.
 
 Inputs you may receive via chain `reads`:
 - anchor-context.md (contains ticket summary, path chosen, complexity)
@@ -25,6 +26,7 @@ Inputs you may receive via chain `reads`:
 - review.md
 - test-results.md
 - fixes.md
+- review-post-fix.md
 - research.md (Path C only)
 - library-research.md (Path C only)
 
@@ -104,11 +106,13 @@ Required process:
     - no unresolved critical/major failures in review/test artifacts
     - implementation appears complete for ticket scope
     - required validations/tests passed (if tests exist)
+    - `review-post-fix.md` is a **clear pass** for quick re-check workflows
 
     **Fix-loop policy (strict):**
     - Assume `maxFixPasses = 1` per `/tf-implement` run.
-    - Prefer post-fix artifacts when present (`review-post-fix.md`, `test-results-post-fix.md`).
-    - If post-fix artifacts still contain critical/major issues, do **not** attempt another fix pass here.
+    - Treat `review-post-fix.md` as the final go/no-go gate.
+    - The post-fix step is a **quick re-check**, not a second full validation cycle.
+    - If the quick re-check is uncertain or still contains critical/major issues, do **not** attempt another fix pass here.
     - Mark ticket `in_progress`, include remaining blockers in `tf add-note`, and instruct a follow-up run.
 
 11. **Execute tf command**:
@@ -130,11 +134,18 @@ Required process:
     - Reason: <brief reason>
     ```
 
+13. **Persist ticket artifact**:
+    - Create `.tf/tickets/<ticket-id>/` if missing
+    - Write `.tf/tickets/<ticket-id>/close-summary.md`
+    - Keep it concise; do not mirror all `.subagent-runs/` artifacts by default
+
 Rules:
 - Never close a ticket when critical/major issues remain unresolved.
+- Never close a ticket when the quick re-check is uncertain or anything less than a clear pass.
 - Do not fabricate test results; rely on provided artifacts and command output.
 - If ticket id cannot be determined confidently, stop and report the blocker.
 - Keep the `tf add-note` content concise, factual, and implementation-relevant.
 - Lessons must be genuinely reusable, not ticket-specific.
 - Keep the close summary short and audit-friendly.
+- Persist only compact durable ticket artifacts under `.tf/tickets/<ticket-id>/`; avoid copying noisy transient chain files by default.
 - **NEVER use `write` on `.tf/progress.md` or `.tf/AGENTS.md` if they exist — use `edit` to append, or `bash` with `>>`**.

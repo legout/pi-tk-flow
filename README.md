@@ -11,7 +11,7 @@ A reusable pi package for tf-driven planning + ticket implementation workflows.
   - `/tf-plan-refine`
   - `/tf-ticketize`
   - `/tf-implement`
-- Bootstrap command extension: `/tf-bootstrap`
+- Bootstrap command extension: `/tk-bootstrap`
 - Subagent templates under `assets/agents/`:
   - context-builder, scout, context-merger, researcher, librarian, plan-fast, plan-deep, worker, reviewer, tester, fixer
   - plan-gap-analyzer, plan-reviewer, documenter, refactorer, simplifier, tf-closer, ticketizer
@@ -26,8 +26,7 @@ A reusable pi package for tf-driven planning + ticket implementation workflows.
   - `tf-path-b.chain.md`
   - `tf-path-c.chain.md`
 
-Implementation presets include a final `tf-closer` step for commit + `tk add-note` + tk close/status gating.
-- Skill: `tf-workflow`
+Implementation presets include a final `tf-closer` step for commit + `tk add-note` + tk close/status gating, plus a compact durable ticket artifact at `.tf/tickets/<ticket-id>/close-summary.md`.
 
 ## Install
 
@@ -36,7 +35,7 @@ Implementation presets include a final `tf-closer` step for commit + `tk add-not
 pi install git:github.com/legout/pi-tf-flow
 
 # or pin a release tag
-pi install git:github.com/legout/pi-tf-flow@v0.2.3
+pi install git:github.com/legout/pi-tf-flow@v0.4.1
 ```
 
 ### pi-subagents prerequisite
@@ -73,7 +72,7 @@ pi install npm:pi-prompt-template-model
 
 | Command | Model | Thinking |
 |---------|-------|----------|
-| `/tf-bootstrap` | `minimax/m2.5` | `low` |
+| `/tk-bootstrap` | `minimax/m2.5` | `low` |
 | `/tf-brainstorm` | `glm-5` | `medium` |
 | `/tf-implement` | `glm-5` | `medium` |
 | `/tf-plan` | `glm-5` | `medium` |
@@ -99,23 +98,23 @@ Commands continue to execute normally when the extension is not installed—no e
 
 ```bash
 # install/update user-level agents + chain presets (~/.pi/agent/agents)
-/tf-bootstrap --scope user
+/tk-bootstrap --scope user
 
 # install/update project-level agents + chain presets (.pi/agents)
-/tf-bootstrap --scope project
+/tk-bootstrap --scope project
 
 # also materialize prompts + skills to local directories
 # user scope: ~/.pi/agent/prompts + ~/.pi/agent/skills
-/tf-bootstrap --scope user --copy-all
+/tk-bootstrap --scope user --copy-all
 
 # project scope: .pi/prompts + .pi/skills
-/tf-bootstrap --scope project --copy-all
+/tk-bootstrap --scope project --copy-all
 
 # preview only
-/tf-bootstrap --scope user --copy-all --dry-run
+/tk-bootstrap --scope user --copy-all --dry-run
 
 # preserve local edits (never overwrite changed files)
-/tf-bootstrap --scope project --copy-all --no-overwrite
+/tk-bootstrap --scope project --copy-all --no-overwrite
 ```
 
 Flags:
@@ -175,6 +174,30 @@ Flag behavior:
 - `--hands-free` and `--dispatch` can combine with `--clarify`
 - `tf-plan`, `tf-plan-check`, and `tf-plan-refine` support `--fast` (default) and `--thorough`.
 - `tf-ticketize` defaults to create mode. Use `--dry-run` to preview without creating tickets.
+
+### `/tf-implement` workflow
+
+`/tf-implement` now uses a leaner ticket lifecycle:
+
+1. **Re-anchor** with `context-builder` only (no scout/merge phase)
+2. **Implement** via `worker`
+3. **Validate**
+   - Path A: targeted review
+   - Path B/C: targeted review + relevant ticket-scoped tests
+4. **Fix** once via `fixer`
+5. **Quick re-check** via `reviewer`
+   - narrow go/no-go pass
+   - reviews only changed files/hunks touched by implementation/fixes
+   - if not a clear pass, the ticket stays `in_progress`
+6. **Close or keep open** via `tf-closer`
+   - `tk close` only on a clear pass
+   - otherwise `tk status <ticket> in_progress`
+   - always writes `.tf/tickets/<ticket-id>/close-summary.md`
+
+Review policy:
+- Reviews focus on **ticket-scoped implementation changes only**
+- Unrelated pre-existing issues are ignored unless they directly block the ticket
+- The post-fix step is intentionally a **quick re-check**, not a second full validation cycle
 
 ## Execution Modes
 

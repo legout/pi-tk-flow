@@ -6,7 +6,7 @@ thinking: medium
 
 Implement ticket from `$@` (parsed into `<TICKET_ID>` + flags).
 
-**Key principle:** The main agent (you) analyzes `anchor-context.md` after the fast anchoring phase (pre-seeded scout/context + merge) and decides which implementation path to use. Context-builder performs ticket/lessons/knowledge anchoring; context-merger appends scout code context.
+**Key principle:** The main agent (you) analyzes `anchor-context.md` after the fast anchoring phase and decides which implementation path to use. `context-builder` performs the ticket/lessons/knowledge anchoring; keep this step focused and fast.
 
 ## Parse Input and Runtime Flags
 
@@ -68,8 +68,7 @@ Validation order:
 - Determine `AGENT_SCOPE` first, then use it consistently on every subagent execution call (single, chain, and parallel).
 - Baseline preflight before any run:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
-  - Required baseline agents: `scout`, `context-builder`, `worker`, `reviewer`, `tf-closer`
-  - Optional optimization agent: `context-merger` (if missing, use fallback chain in section 1e).
+  - Required baseline agents: `context-builder`, `worker`, `reviewer`, `tf-closer`
 - Path-specific preflight before executing chosen path:
   - Path A: baseline + `fixer`
   - Path B: baseline + `plan-fast`, `tester`, `fixer`
@@ -92,14 +91,13 @@ Validation order:
 - `includeProgress: false`
 - `maxOutput: { "bytes": 200000, "lines": 5000 }`
 
-## 1. Fast Anchoring (Pre-seeded Parallel Scout + Context-Builder)
+## 1. Fast Anchoring (Context-Builder Only)
 
 **Optimizations applied:**
-- Pre-seed both agents with ticket context (no blind exploration)
-- Run scout + context-builder in parallel
-- Reuse cached scout context if codebase unchanged
-- Scout follows dependency chains, not just direct matches
-- Batched file reading within scout
+- Pre-seed a single anchoring agent with ticket context
+- Use `context-builder` only — no scout, no merge step
+- Anchor only what is needed to implement the current ticket
+- Keep anchoring fast, deterministic, and easy to resume
 
 ### 1a. Quick Ticket Analysis (Main Agent - 15 seconds)
 
@@ -135,79 +133,9 @@ Write this to `.subagent-runs/<TICKET_ID>/ticket-seed.json`:
 }
 ```
 
-### 1b. Check for Cached Scout Context
+### 1b. Run Context-Builder
 
-Check if we can reuse previous scout output:
-
-```bash
-# Check if scout context exists from a previous run
-SCOUT_CACHE=".subagent-runs/<TICKET_ID>/scout-context.md"
-CACHE_META=".subagent-runs/<TICKET_ID>/.scout-git-hash"
-CACHE_VALID=false
-
-if [ -f "$SCOUT_CACHE" ] && [ -f "$CACHE_META" ]; then
-  CURRENT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "no-git")
-  CACHE_HASH=$(cat "$CACHE_META" 2>/dev/null || echo "")
-
-  if [ "$CURRENT_HASH" = "$CACHE_HASH" ]; then
-    CACHE_VALID=true
-  elif ! git cat-file -e "$CACHE_HASH^{commit}" 2>/dev/null; then
-    # Cache points to unknown history (rebased/pruned). Do a fresh scout.
-    CACHE_VALID=false
-  else
-    # "Significant" change check: reuse cache only when changes do not touch
-    # (a) previously scouted files and (b) ticket seed scope hints.
-    CHANGED_FILES=$(git diff --name-only "$CACHE_HASH"..HEAD 2>/dev/null || true)
-
-    if [ -n "$CHANGED_FILES" ]; then
-      # First, invalidate cache if any changed file was part of previously scouted context.
-      RELEVANT_CHANGE=false
-      while IFS= read -r f; do
-        [ -z "$f" ] && continue
-        if grep -F -q -- "\`$f\`" "$SCOUT_CACHE" || grep -F -q -- "$f" "$SCOUT_CACHE"; then
-          RELEVANT_CHANGE=true
-          break
-        fi
-      done <<< "$CHANGED_FILES"
-
-      # Secondary check using ticket seed scope hints.
-      SCOPE_REGEX=$(python3 - <<'PY'
-import json, re
-from pathlib import Path
-p = Path('.subagent-runs/<TICKET_ID>/ticket-seed.json')
-if not p.exists():
-    print('.*')
-    raise SystemExit
-seed = json.loads(p.read_text())
-parts = []
-for h in seed.get('file_hints', []):
-    if h:
-        parts.append(re.escape(h.strip('/')))
-for t in seed.get('primary_terms', []):
-    if t:
-        parts.append(re.escape(t))
-print('|'.join(parts) if parts else '.*')
-PY
-)
-
-      if [ "$RELEVANT_CHANGE" = true ] || echo "$CHANGED_FILES" | grep -E -q -- "$SCOPE_REGEX"; then
-        CACHE_VALID=false
-      else
-        CACHE_VALID=true
-      fi
-    else
-      # Different commit hash but no file changes in range; reuse cache.
-      CACHE_VALID=true
-    fi
-  fi
-fi
-```
-
-If `CACHE_VALID=true`, skip the scout run and reuse existing `scout-context.md`; run context-builder and merge with cached scout context.
-
-### 1c. Parallel Scout + Context-Builder (Pre-seeded, when cache is invalid)
-
-Use this when `CACHE_VALID=false`. Both agents receive the ticket seed for targeted work:
+Use a single `context-builder` run for anchoring:
 
 ```json
 {
@@ -218,190 +146,34 @@ Use this when `CACHE_VALID=false`. Both agents receive the ticket seed for targe
   "artifacts": true,
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
-  "chain": [
-    {
-      "parallel": [
-        {
-          "agent": "scout",
-          "task": "Scout codebase for ticket <TICKET_ID>. SEED CONTEXT in ticket-seed.json - use it to target your search.\n\nMUST DO:\n1. Read ticket-seed.json first for targeting hints\n2. Find files matching primary_terms using grep/find\n3. Read those files AND their imports/dependencies (follow import statements)\n4. Read related test files\n5. Use batched/rapid read calls when fetching multiple files\n\nOUTPUT: scout-context.md with:\n- Files Retrieved (with line ranges and WHY relevant)\n- Key Code (actual snippets of types/functions)\n- Dependency Graph (what imports what)\n- Architecture Notes\n- Start Here recommendation",
-          "reads": ["ticket-seed.json"],
-          "output": "scout-context.md"
-        },
-        {
-          "agent": "context-builder",
-          "task": "Build implementation context for ticket <TICKET_ID>. SEED CONTEXT in ticket-seed.json - use it for context.\n\nMUST DO:\n1. Read ticket-seed.json for ticket summary\n2. Read full ticket file for details\n3. Read .tf/AGENTS.md for lessons learned\n4. Read relevant .tf/knowledge/** files\n\nOUTPUT: anchor-context-base.md with:\n- Ticket Summary (what + why)\n- Complexity Assessment (simple/medium/complex)\n- Research Gaps (if any)\n- External Libraries Involved\n- Testing Requirements\n- Recommended Path (A/B/C)\n\nNOTE: scout-context.md may not be available yet - work independently.",
-          "reads": ["ticket-seed.json"],
-          "output": "anchor-context-base.md"
-        }
-      ],
-      "concurrency": 2,
-      "failFast": false
-    },
-    {
-      "agent": "context-merger",
-      "task": "Merge scout and context-builder outputs into final anchor-context.md.\n\nRead both scout-context.md and anchor-context-base.md.\nIf scout found relevant code patterns/dependencies, ADD them under a new 'Code Context' section.\nKeep all existing sections from anchor-context-base.md.\nWrite the merged result to anchor-context.md.",
-      "reads": ["scout-context.md", "anchor-context-base.md"],
-      "output": "anchor-context.md"
-    }
-  ]
+  "agent": "context-builder",
+  "task": "Build implementation context for ticket <TICKET_ID>. Read ticket-seed.json first. Focus on the ticket, relevant lessons, and existing .tf/knowledge. Use explicit ticket file hints when available. Do NOT do broad codebase scouting; anchor only the context needed to implement this ticket. Output anchor-context.md with: Ticket Summary, Complexity Assessment, Research Gaps, External Libraries, Testing Requirements, Recommended Path (A/B/C), and concrete file hints to start from when known.",
+  "reads": ["ticket-seed.json"],
+  "output": "anchor-context.md"
 }
 ```
 
-After completion, store git hash for cache validation:
-```bash
-git rev-parse HEAD > .subagent-runs/<TICKET_ID>/.scout-git-hash 2>/dev/null || true
-```
-
 **CRITICAL: Handle subagent session directory structure**
-The subagent chain creates a session subdirectory (e.g., `.subagent-runs/<TICKET_ID>/<session-id>/`) and writes output files there. After the chain completes, locate and copy `anchor-context.md` to the expected location:
+The subagent run may create a session subdirectory (e.g., `.subagent-runs/<TICKET_ID>/<session-id>/`) and write output files there. After the run completes, locate and copy `anchor-context.md` to the expected location:
 
 ```bash
-# Find the most recent anchor-context.md from chain execution
-# (It may be in a session subdirectory like <hash>/anchor-context.md)
 ANCHOR_FILE=$(find .subagent-runs/<TICKET_ID> -name "anchor-context.md" -type f 2>/dev/null | head -1)
 
 if [ -n "$ANCHOR_FILE" ] && [ "$ANCHOR_FILE" != ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
   cp "$ANCHOR_FILE" .subagent-runs/<TICKET_ID>/anchor-context.md
 fi
 
-# Verify the file exists at the expected location before proceeding
 if [ ! -f ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
-  echo "ERROR: anchor-context.md not found after anchoring chain"
+  echo "ERROR: anchor-context.md not found after anchoring run"
   echo "Searched in: .subagent-runs/<TICKET_ID>/"
   # STOP and report the error
 fi
 ```
 
-### 1d. Cache-Hit Path (Reuse scout output)
-
-Use this when `CACHE_VALID=true`:
-
-```json
-{
-  "agentScope": "<AGENT_SCOPE>",
-  "chainDir": ".subagent-runs/<TICKET_ID>",
-  "clarify": false,
-  "async": false,
-  "artifacts": true,
-  "includeProgress": false,
-  "maxOutput": { "bytes": 200000, "lines": 5000 },
-  "chain": [
-    {
-      "agent": "context-builder",
-      "task": "Build implementation context for ticket <TICKET_ID> using ticket-seed.json and latest ticket/knowledge files.",
-      "reads": ["ticket-seed.json"],
-      "output": "anchor-context-base.md"
-    },
-    {
-      "agent": "context-merger",
-      "task": "Merge cached scout-context.md with fresh anchor-context-base.md into final anchor-context.md.",
-      "reads": ["scout-context.md", "anchor-context-base.md"],
-      "output": "anchor-context.md"
-    }
-  ]
-}
-```
-
-After chain completion, handle session directory structure:
-```bash
-ANCHOR_FILE=$(find .subagent-runs/<TICKET_ID> -name "anchor-context.md" -type f 2>/dev/null | head -1)
-if [ -n "$ANCHOR_FILE" ] && [ "$ANCHOR_FILE" != ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
-  cp "$ANCHOR_FILE" .subagent-runs/<TICKET_ID>/anchor-context.md
-fi
-```
-
-### 1e. If No context-merger Agent Exists
-
-If `context-merger` is not available, use this fallback chain:
-
-```json
-{
-  "agentScope": "<AGENT_SCOPE>",
-  "chainDir": ".subagent-runs/<TICKET_ID>",
-  "clarify": false,
-  "async": false,
-  "artifacts": true,
-  "includeProgress": false,
-  "maxOutput": { "bytes": 200000, "lines": 5000 },
-  "chain": [
-    {
-      "parallel": [
-        {
-          "agent": "scout",
-          "task": "Scout codebase for ticket <TICKET_ID>. Read ticket-seed.json FIRST for targeting.\n\nMUST:\n1. grep/find files matching primary_terms\n2. Read matched files AND their dependencies (follow imports)\n3. Read related test files\n4. Use batched/rapid read calls for multiple files\n\nOutput: scout-context.md",
-          "reads": ["ticket-seed.json"],
-          "output": "scout-context.md"
-        },
-        {
-          "agent": "context-builder",
-          "task": "Build anchor context for <TICKET_ID>. Read ticket-seed.json, full ticket, .tf/AGENTS.md, .tf/knowledge/**.\n\nAfter parallel phase, you'll receive scout-context.md to incorporate.\n\nOutput: anchor-context-draft.md with ticket summary, complexity, research gaps, path recommendation.",
-          "reads": ["ticket-seed.json"],
-          "output": "anchor-context-draft.md"
-        }
-      ],
-      "concurrency": 2,
-      "failFast": false
-    },
-    {
-      "agent": "context-builder",
-      "task": "Finalize anchor-context.md by merging scout findings.\n\nRead anchor-context-draft.md and scout-context.md.\nAdd a 'Code Context' section with scout's findings to the draft.\nWrite final merged result to anchor-context.md.",
-      "reads": ["anchor-context-draft.md", "scout-context.md"],
-      "output": "anchor-context.md"
-    }
-  ]
-}
-```
-
-After successful fallback run that included a fresh scout, store git hash and handle session directory:
-```bash
-git rev-parse HEAD > .subagent-runs/<TICKET_ID>/.scout-git-hash 2>/dev/null || true
-
-ANCHOR_FILE=$(find .subagent-runs/<TICKET_ID> -name "anchor-context.md" -type f 2>/dev/null | head -1)
-if [ -n "$ANCHOR_FILE" ] && [ "$ANCHOR_FILE" != ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
-  cp "$ANCHOR_FILE" .subagent-runs/<TICKET_ID>/anchor-context.md
-fi
-```
-
-If `context-merger` is missing **and** `CACHE_VALID=true`, use this cache-hit fallback:
-
-```json
-{
-  "agentScope": "<AGENT_SCOPE>",
-  "chainDir": ".subagent-runs/<TICKET_ID>",
-  "clarify": false,
-  "async": false,
-  "artifacts": true,
-  "includeProgress": false,
-  "maxOutput": { "bytes": 200000, "lines": 5000 },
-  "chain": [
-    {
-      "agent": "context-builder",
-      "task": "Build anchor context for <TICKET_ID> from ticket-seed.json, ticket file, .tf/AGENTS.md, and .tf/knowledge/**.",
-      "reads": ["ticket-seed.json"],
-      "output": "anchor-context-draft.md"
-    },
-    {
-      "agent": "context-builder",
-      "task": "Finalize anchor-context.md by merging cached scout findings. Read anchor-context-draft.md and scout-context.md, then add a Code Context section and write anchor-context.md.",
-      "reads": ["anchor-context-draft.md", "scout-context.md"],
-      "output": "anchor-context.md"
-    }
-  ]
-}
-```
-
-After cache-hit fallback chain completion:
-```bash
-ANCHOR_FILE=$(find .subagent-runs/<TICKET_ID> -name "anchor-context.md" -type f 2>/dev/null | head -1)
-if [ -n "$ANCHOR_FILE" ] && [ "$ANCHOR_FILE" != ".subagent-runs/<TICKET_ID>/anchor-context.md" ]; then
-  cp "$ANCHOR_FILE" .subagent-runs/<TICKET_ID>/anchor-context.md
-fi
-```
-
 **Time saved:**
-- Pre-seeding: Scout doesn't wander, targets specific files (~50% faster)
-- Parallel: Scout + context-builder run simultaneously (~40% faster)
-- Caching: Skip scout entirely if unchanged (~100% faster for re-runs)
+- Single-agent anchoring instead of parallel scout + merge
+- Fewer artifacts to manage in `.subagent-runs/<TICKET_ID>`
+- Faster reruns and easier handoff
 
 ## 2. Interactive Mode Router (Post-Anchoring)
 
@@ -699,7 +471,7 @@ Read `.subagent-runs/<TICKET_ID>/anchor-context.md` and decide based on:
 | **Research needed?** | No (existing knowledge sufficient) | Maybe (check knowledge first) | Yes (new domain/libraries) |
 | **LOC estimate** | <50 | 50-200 | >200 |
 | **Validation** | Review only | Review + Test (parallel) | Review + Test (parallel) |
-| **Chain steps** | seed→(scout∥context)→merge→worker→reviewer→fixer→reviewer(re-check)→closer | seed→(scout∥context)→merge→plan-fast→worker→**parallel review+test**→fixer→**parallel re-check**→closer | seed→(scout∥context)→merge→**parallel research**→plan-deep→worker→**parallel review+test**→fixer→**parallel re-check**→closer |
+| **Chain steps** | seed→context→worker→reviewer→fixer→reviewer(quick re-check)→closer | seed→context→plan-fast→worker→**parallel review+test**→fixer→reviewer(quick re-check)→closer | seed→context→**parallel research**→plan-deep→worker→**parallel review+test**→fixer→reviewer(quick re-check)→closer |
 
 ### Decision Rules
 
@@ -745,10 +517,10 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per anchor context.", "reads": ["anchor-context.md"], "output": "implementation.md" },
-    { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>. Identify critical/major/minor issues.", "reads": ["implementation.md", "anchor-context.md"], "output": "review.md" },
+    { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>. Review ONLY the changes introduced during this implementation. Use implementation.md to identify touched files and use git diff/show as needed to inspect changed hunks. Focus on ticket scope, acceptance criteria, and regressions in changed code; ignore unrelated pre-existing issues.", "reads": ["implementation.md", "anchor-context.md"], "output": "review.md" },
     { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID> based on review.md. If no critical/major issues exist, record a no-op rationale.", "reads": ["implementation.md", "review.md", "anchor-context.md"], "output": "fixes.md" },
-    { "agent": "reviewer", "task": "Post-fix re-check for ticket <TICKET_ID>. Validate whether critical/major issues are resolved after fixes.md.", "reads": ["implementation.md", "fixes.md", "anchor-context.md"], "output": "review-post-fix.md" },
-    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix review still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "fixes.md", "review-post-fix.md"], "output": "close-summary.md" }
+    { "agent": "reviewer", "task": "QUICK re-check for ticket <TICKET_ID>. Review ONLY the changed files/hunks touched by implementation and fixes. Focus on whether the critical/major issues from review.md are clearly resolved and whether the ticket scope looks safe. If anything is uncertain, insufficiently verified, or not an unambiguous pass, say so explicitly.", "reads": ["implementation.md", "review.md", "fixes.md", "anchor-context.md"], "output": "review-post-fix.md" },
+    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket artifact copy, and ticket close gate. maxFixPasses=1 per run. If the quick re-check is anything other than a clear pass, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "fixes.md", "review-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -769,22 +541,15 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [
-        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
-        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
+        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>. Review ONLY the changes introduced during this implementation. Use implementation.md to identify touched files and use git diff/show as needed to inspect changed hunks. Focus on ticket scope, acceptance criteria, and regressions in changed code; ignore unrelated pre-existing issues.", "reads": ["implementation.md", "plan.md", "anchor-context.md"], "output": "review.md" },
+        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>. Run only the most relevant ticket-scoped tests and checks you can identify with high signal. Prioritize changed modules, referenced tests, and the most direct validation commands.", "reads": ["implementation.md", "plan.md", "anchor-context.md"], "output": "test-results.md" }
       ],
       "concurrency": 2,
       "failFast": false
     },
     { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID> using review.md and test-results.md. If no critical/major issues exist, record a no-op rationale.", "reads": ["implementation.md", "review.md", "test-results.md", "plan.md"], "output": "fixes.md" },
-    {
-      "parallel": [
-        { "agent": "reviewer", "task": "Post-fix re-check review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "review-post-fix.md" },
-        { "agent": "tester", "task": "Post-fix re-check tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "test-results-post-fix.md" }
-      ],
-      "concurrency": 2,
-      "failFast": false
-    },
-    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md"], "output": "close-summary.md" }
+    { "agent": "reviewer", "task": "QUICK re-check for ticket <TICKET_ID>. Review ONLY the changed files/hunks touched by implementation and fixes. Focus on whether the critical/major issues from review.md are clearly resolved and whether the ticket scope looks safe. Use the initial test-results.md as supporting signal, but do not broaden scope. If anything is uncertain, insufficiently verified, or not an unambiguous pass, say so explicitly.", "reads": ["implementation.md", "review.md", "test-results.md", "fixes.md", "plan.md", "anchor-context.md"], "output": "review-post-fix.md" },
+    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket artifact copy, and ticket close gate. maxFixPasses=1 per run. If the quick re-check is anything other than a clear pass, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -819,22 +584,15 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [
-        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
-        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
+        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>. Review ONLY the changes introduced during this implementation. Use implementation.md to identify touched files and use git diff/show as needed to inspect changed hunks. Focus on ticket scope, acceptance criteria, and regressions in changed code; ignore unrelated pre-existing issues.", "reads": ["implementation.md", "plan.md", "anchor-context.md"], "output": "review.md" },
+        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>. Run only the most relevant ticket-scoped tests and checks you can identify with high signal. Prioritize changed modules, referenced tests, and the most direct validation commands.", "reads": ["implementation.md", "plan.md", "anchor-context.md"], "output": "test-results.md" }
       ],
       "concurrency": 2,
       "failFast": false
     },
     { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID>. Prioritize: test failures > critical review > major review. If no critical/major issues exist, record a no-op rationale.", "reads": ["review.md", "test-results.md", "implementation.md", "plan.md"], "output": "fixes.md" },
-    {
-      "parallel": [
-        { "agent": "reviewer", "task": "Post-fix re-check review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "review-post-fix.md" },
-        { "agent": "tester", "task": "Post-fix re-check tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "test-results-post-fix.md" }
-      ],
-      "concurrency": 2,
-      "failFast": false
-    },
-    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, persist research, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md", "research.md", "library-research.md"], "output": "close-summary.md" }
+    { "agent": "reviewer", "task": "QUICK re-check for ticket <TICKET_ID>. Review ONLY the changed files/hunks touched by implementation and fixes. Focus on whether the critical/major issues from review.md are clearly resolved and whether the ticket scope looks safe. Use the initial test-results.md as supporting signal, but do not broaden scope. If anything is uncertain, insufficiently verified, or not an unambiguous pass, say so explicitly.", "reads": ["implementation.md", "review.md", "test-results.md", "fixes.md", "plan.md", "anchor-context.md"], "output": "review-post-fix.md" },
+    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, persist research, lessons learned, ticket artifact copy, and ticket close gate. maxFixPasses=1 per run. If the quick re-check is anything other than a clear pass, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "research.md", "library-research.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -855,22 +613,15 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
     { "agent": "worker", "task": "Implement ticket <TICKET_ID> per plan.", "reads": ["plan.md", "anchor-context.md"], "output": "implementation.md" },
     {
       "parallel": [
-        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "review.md" },
-        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md"], "output": "test-results.md" }
+        { "agent": "reviewer", "task": "Initial review for ticket <TICKET_ID>. Review ONLY the changes introduced during this implementation. Use implementation.md to identify touched files and use git diff/show as needed to inspect changed hunks. Focus on ticket scope, acceptance criteria, and regressions in changed code; ignore unrelated pre-existing issues.", "reads": ["implementation.md", "plan.md", "anchor-context.md"], "output": "review.md" },
+        { "agent": "tester", "task": "Initial tests for ticket <TICKET_ID>. Run only the most relevant ticket-scoped tests and checks you can identify with high signal. Prioritize changed modules, referenced tests, and the most direct validation commands.", "reads": ["implementation.md", "plan.md", "anchor-context.md"], "output": "test-results.md" }
       ],
       "concurrency": 2,
       "failFast": false
     },
     { "agent": "fixer", "task": "Apply one fix pass for ticket <TICKET_ID> using review.md and test-results.md. If no critical/major issues exist, record a no-op rationale.", "reads": ["review.md", "test-results.md", "implementation.md", "plan.md"], "output": "fixes.md" },
-    {
-      "parallel": [
-        { "agent": "reviewer", "task": "Post-fix re-check review for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "review-post-fix.md" },
-        { "agent": "tester", "task": "Post-fix re-check tests for ticket <TICKET_ID>.", "reads": ["implementation.md", "plan.md", "fixes.md"], "output": "test-results-post-fix.md" }
-      ],
-      "concurrency": 2,
-      "failFast": false
-    },
-    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket close gate. maxFixPasses=1 per run. If post-fix re-check still has critical/major issues, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md", "test-results-post-fix.md"], "output": "close-summary.md" }
+    { "agent": "reviewer", "task": "QUICK re-check for ticket <TICKET_ID>. Review ONLY the changed files/hunks touched by implementation and fixes. Focus on whether the critical/major issues from review.md are clearly resolved and whether the ticket scope looks safe. Use the initial test-results.md as supporting signal, but do not broaden scope. If anything is uncertain, insufficiently verified, or not an unambiguous pass, say so explicitly.", "reads": ["implementation.md", "review.md", "test-results.md", "fixes.md", "plan.md", "anchor-context.md"], "output": "review-post-fix.md" },
+    { "agent": "tf-closer", "task": "Finalize ticket <TICKET_ID>: git commit, progress tracking, lessons learned, ticket artifact copy, and ticket close gate. maxFixPasses=1 per run. If the quick re-check is anything other than a clear pass, do not close; set tk status in_progress and add blocker note.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md"], "output": "close-summary.md" }
   ]
 }
 ```
@@ -919,29 +670,37 @@ If research was conducted, persist reusable findings to `.tf/knowledge/`:
 - Topic files: `.tf/knowledge/topics/<topic-slug>.md`
 - Ticket research: `.tf/knowledge/tickets/<TICKET_ID>/research.md`
 
-### D) Git Commit
+### D) Ticket Artifacts
+Persist a compact ticket record to `.tf/tickets/<TICKET_ID>/`:
+- Always write `.tf/tickets/<TICKET_ID>/close-summary.md`
+- Keep it concise and durable; do not mirror every `.subagent-runs/` artifact by default
+- Prefer summaries and handoff notes over copying large transient files
+
+### E) Git Commit
 1. `git rev-parse --is-inside-work-tree`
 2. `git status --short`
 3. Stage and commit with message: `<TICKET_ID>: <summary>`
 
-### E) Ticket Note
+### F) Ticket Note
 - `tk add-note <TICKET_ID> "..."`
 
-### F) Close Decision
+### G) Close Decision
 Close only if:
 - Dependencies complete
 - Implementation complete
 - No blocking issues (critical/major failures)
-- Tests passed
+- Tests passed when tests were part of the path
+- `review-post-fix.md` is a clear, unambiguous pass
 
 Then: `tk close <TICKET_ID>`
 
 Else: `tk status <TICKET_ID> in_progress`
 
-### G) Fix-loop Policy (Max 1 per run)
+### H) Fix-loop Policy (Max 1 per run)
 - `maxFixPasses = 1` for each `/tf-implement` run.
-- Use post-fix artifacts (`review-post-fix.md`, `test-results-post-fix.md`) as the source of truth when present.
-- If post-fix re-check still has critical/major issues, do not attempt additional fix passes in the same run.
+- Use `review-post-fix.md` as the final go/no-go gate.
+- The post-fix step is a **quick re-check**, not a second full validation pass.
+- If the quick re-check is uncertain or still has critical/major issues, do not attempt additional fix passes in the same run.
 - Keep ticket `in_progress`, add a clear blocker note via `tk add-note`, and suggest a follow-up run.
 
 ## Example Usage

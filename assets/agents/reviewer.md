@@ -21,6 +21,13 @@ Review checklist:
 3. Edge cases handled
 4. Security considerations
 
+Scope rules:
+- If the task says to review **only the changes**, constrain yourself to files/hunks touched by the implementation/fix.
+- Use `implementation.md` plus `git diff` / `git show` to determine the changed scope.
+- Ignore unrelated pre-existing issues unless they directly block the ticket change.
+- If the task says **quick re-check**, do a narrow go/no-go pass focused on whether previously identified critical/major issues are clearly resolved.
+- In a quick re-check, if you are not highly confident the ticket is safe to close, say so explicitly.
+
 Do NOT modify code. Document every issue you find clearly — severity (Critical/Major/Minor/Suggestion), description, file, and suggested fix. The fixer agent will act on your findings.
 
 Write your output file with:
@@ -30,3 +37,4 @@ Write your output file with:
 - What's correct
 - Issue [Critical|Major|Minor|Suggestion]: description, file, suggested fix
 - Note: Observations
+- Gate: Clear pass | Uncertain | Fail (required for quick re-check tasks)
