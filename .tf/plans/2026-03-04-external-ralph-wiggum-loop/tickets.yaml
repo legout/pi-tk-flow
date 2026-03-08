@@ -1,0 +1,139 @@
+epic:
+  title: "External Ralph Wiggum Loop"
+  ticket_id: "ptf-9c04"
+  type: epic
+  description: "Deliver a safe external tk-loop automation to process ready tickets sequentially via /tk-implement with execution-mode support, observability, and verification coverage."
+  tags: [planning, tk-loop, ralph, automation]
+
+slices:
+  - key: S1
+    ticket_id: "ptf-3nor"
+    title: "S1: Script shell and safe startup contract"
+    type: feature
+    afk_hitl: AFK
+    priority: 1
+    tags: [feature, vertical-slice, tk-loop, ralph]
+    description: |
+      Build .tf/scripts/tk-loop.sh scaffold with help/version output, mode parsing and mutex validation,
+      recursion guard, and dependency checks for tk/pi prior to loop execution.
+    design: |
+      PRD: US-4 Recursion Safety; US-5 Multiple Execution Modes; ID-3 Recursion Guard
+      Spec: 2.1 Core Script; 2.2 Flag Parser
+      Plan: Task 1; Task 2; Task 3; Task 4
+    acceptance: |
+      - [ ] --help prints usage with all supported modes and env vars.
+      - [ ] Combined mode flags fail with a clear validation error.
+      - [ ] Unknown flags fail fast with non-zero exit.
+      - [ ] PI_TK_INTERACTIVE_CHILD=1 blocks nested loop invocation.
+      - [ ] Missing tk or pi binary is detected before loop execution starts.
+    blocked_by: []
+
+  - key: S2
+    ticket_id: "ptf-gg6c"
+    title: "S2: Queue polling and sequential ticket dispatch"
+    type: feature
+    afk_hitl: AFK
+    priority: 1
+    tags: [feature, vertical-slice, tk-loop, ralph]
+    description: |
+      Implement tk ready parsing, mode-aware command building, sequential processing, dry-run handling,
+      and clean success exit when queue becomes empty.
+    design: |
+      PRD: US-1 Batch Ticket Processing; US-2 Clarify Mode Integration; US-3 Clean Exit on Empty Queue
+      Spec: 2.3 Ticket Parser; 2.4 Command Builder; 3.1 Main Loop Flow
+      Plan: Task 5; Task 6; Task 8
+    acceptance: |
+      - [ ] Ticket IDs parse from first column of tk ready output.
+      - [ ] Command builder emits correct /tk-implement <ID> --<mode> invocation.
+      - [ ] Tickets process one-at-a-time in queue order.
+      - [ ] --dry-run logs intended commands without invoking pi.
+      - [ ] Empty queue exits status 0 with completion log.
+    blocked_by: [S1]
+
+  - key: S3
+    ticket_id: "ptf-wuvd"
+    title: "S3: State directory and structured observability"
+    type: feature
+    afk_hitl: AFK
+    priority: 2
+    tags: [feature, vertical-slice, tk-loop, observability]
+    description: |
+      Add normalized .tk-loop-state management with pid lock handling, current-ticket marker,
+      JSONL success/failure logs, structured loop logs, and metrics.json updates.
+    design: |
+      PRD: ID-4 State Management; US-1 logging acceptance
+      Spec: 2.5 State Manager; 5.1 Structured Logging; 5.2 Metrics
+      Plan: Task 7; Task 9; Change 4
+    acceptance: |
+      - [ ] Startup initializes required state files in .tk-loop-state.
+      - [ ] Active pid lock blocks concurrent runs; stale lock cleanup is safe.
+      - [ ] processed.jsonl and failed.jsonl append valid JSONL records.
+      - [ ] metrics.json remains valid JSON while counters update.
+      - [ ] loop.log receives structured entries aligned with loop events.
+    blocked_by: [S2]
+
+  - key: S4
+    ticket_id: "ptf-leyd"
+    title: "S4: Failure continuation and graceful shutdown"
+    type: feature
+    afk_hitl: AFK
+    priority: 2
+    tags: [feature, vertical-slice, tk-loop, reliability]
+    description: |
+      Implement no-retry failure behavior and signal-driven cleanup so failed tickets are recorded,
+      remaining tickets continue processing, and runtime locks/markers are cleaned on shutdown.
+    design: |
+      PRD: ID-5 Error Handling; Out of Scope #2 (no automatic retry); TD-4 Failure Recovery
+      Spec: 4.3 Signal Handling; 4.4 Failure Recording
+      Plan: Change 1; Task 8; Task 10
+    acceptance: |
+      - [ ] Failed tickets are recorded in failed.jsonl with timestamp and error details.
+      - [ ] Failed tickets are not retried automatically in-run.
+      - [ ] Loop continues processing remaining ready tickets after a failure.
+      - [ ] SIGINT/SIGTERM cleanup removes pid.lock and clears current-ticket.
+      - [ ] Shutdown path logs completion and exits cleanly.
+    blocked_by: [S3]
+
+  - key: S5
+    ticket_id: "ptf-ucgi"
+    title: "S5: End-to-end tests and mock infrastructure contract"
+    type: task
+    afk_hitl: AFK
+    priority: 2
+    tags: [task, vertical-slice, tk-loop, testing]
+    description: |
+      Deliver integration test harness and deterministic tk/pi mocks, plus contract documentation
+      specifying mock interfaces, environment variables, expected behavior, and assertions.
+    design: |
+      PRD: TD-1 through TD-6
+      Spec: 6.2 Integration Tests; 6.4 Mock Infrastructure; 6.5 Test Scenarios
+      Plan: Task 11; Task 11.5; Change 2; Change 3
+    acceptance: |
+      - [ ] test-tk-loop.sh executes all planned scenarios.
+      - [ ] Mock tk and pi binaries follow the documented contract.
+      - [ ] Test harness exits non-zero when any scenario fails.
+      - [ ] MOCK_CONTRACT.md documents preconditions, behavior, and post-conditions.
+      - [ ] Test execution is deterministic locally.
+    blocked_by: [S4]
+
+  - key: S6
+    ticket_id: "ptf-7vl1"
+    title: "S6: Usage documentation and troubleshooting runbook"
+    type: chore
+    afk_hitl: AFK
+    priority: 3
+    tags: [chore, vertical-slice, tk-loop, documentation]
+    description: |
+      Publish .tf/scripts/README.md covering setup, execution modes, state artifacts,
+      troubleshooting paths, and test execution instructions.
+    design: |
+      PRD: US-5 Multiple Execution Modes; ID-4 State Management; Out of Scope
+      Spec: 7.2 Installation; 7.3 Configuration; 7.5 Rollback Plan
+      Plan: Task 12
+    acceptance: |
+      - [ ] README includes copy/paste examples for all four execution modes.
+      - [ ] Env vars and .tk-loop-state schema are documented accurately.
+      - [ ] Troubleshooting covers stale lock, recursion guard, and failed-ticket handling.
+      - [ ] Testing section explains integration test execution.
+      - [ ] Documentation reflects no automatic retry behavior.
+    blocked_by: [S5]
