@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 *.log
 .subagent-runs/
+__pycache__/
+*.py[cod]
+.pytest_cache/

@@ -116,7 +116,8 @@ knowledge_pack:
   key_permalinks:
     - "https://github.com/<owner>/<repo>/blob/<sha>/path#Lx-Ly"
   suggested_paths:
-    - ".tf/knowledge/topics/<topic-slug>.md"
+    - ".tf/knowledge/topics/<topic-slug>/library-research.md"
+    - ".tf/knowledge/topics/<topic-slug>/summary.md"
     - ".tf/knowledge/tickets/<ticket-id>/research.md"
   no_new_knowledge_reason: "set only when reusable=false"
 ```

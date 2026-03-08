@@ -14,7 +14,7 @@ Goal:
 - Append progress entry to `.tf/progress.md`.
 - Conditionally append lessons learned to `.tf/AGENTS.md` (only NEW + USEFUL).
 - Persist reusable research to `.tf/knowledge/` (when research artifacts provided).
-- Add a concise implementation note to the ticket via `tf add-note`.
+- Add a concise implementation note to the ticket via `tk add-note`.
 - Close the ticket when completion gates pass.
 - Otherwise keep it in_progress (or blocked when explicitly appropriate).
 - Write a concise close summary artifact.
@@ -90,7 +90,8 @@ Required process:
      - Delta (what was new vs existing knowledge)
      - Sources used
      - Reuse decision
-   - For reusable findings, create/update `.tf/knowledge/topics/<topic-slug>.md`
+   - For reusable findings, create/update `.tf/knowledge/topics/<topic-slug>/`
+     - Recommended files: `summary.md`, `research.md`, `library-research.md`
 
 8. **Build ticket note** including:
    - implementation summary (2-5 bullets)
@@ -99,8 +100,8 @@ Required process:
    - commit hash (if available)
 
 9. **Add note to ticket**:
-   - `tf add-note <ticket-id> "<note text>"`
-   - or pipe multiline content to `tf add-note <ticket-id>`
+   - `tk add-note <ticket-id> "<note text>"`
+   - or pipe multiline content to `tk add-note <ticket-id>`
 
 10. **Evaluate closure gates** conservatively:
     - no unresolved critical/major failures in review/test artifacts
@@ -113,11 +114,11 @@ Required process:
     - Treat `review-post-fix.md` as the final go/no-go gate.
     - The post-fix step is a **quick re-check**, not a second full validation cycle.
     - If the quick re-check is uncertain or still contains critical/major issues, do **not** attempt another fix pass here.
-    - Mark ticket `in_progress`, include remaining blockers in `tf add-note`, and instruct a follow-up run.
+    - Mark ticket `in_progress`, include remaining blockers in `tk add-note`, and instruct a follow-up run.
 
-11. **Execute tf command**:
-    - If gates pass: `tf close <ticket-id>`
-    - If gates do not pass: `tf status <ticket-id> in_progress`
+11. **Execute tk command**:
+    - If gates pass: `tk close <ticket-id>`
+    - If gates do not pass: `tk status <ticket-id> in_progress`
 
 12. **Write `close-summary.md`**:
     ```markdown
@@ -129,7 +130,7 @@ Required process:
     - Progress: updated .tf/progress.md
     - Lessons: <count> added to .tf/AGENTS.md
     - Knowledge: <persisted/skipped>
-    - Note: added via tf add-note
+    - Note: added via tk add-note
     - Decision: <closed/in_progress/blocked>
     - Reason: <brief reason>
     ```
@@ -144,7 +145,7 @@ Rules:
 - Never close a ticket when the quick re-check is uncertain or anything less than a clear pass.
 - Do not fabricate test results; rely on provided artifacts and command output.
 - If ticket id cannot be determined confidently, stop and report the blocker.
-- Keep the `tf add-note` content concise, factual, and implementation-relevant.
+- Keep the `tk add-note` content concise, factual, and implementation-relevant.
 - Lessons must be genuinely reusable, not ticket-specific.
 - Keep the close summary short and audit-friendly.
 - Persist only compact durable ticket artifacts under `.tf/tickets/<ticket-id>/`; avoid copying noisy transient chain files by default.

@@ -66,8 +66,19 @@ async function listTemplates(srcDir: string, suffix: string): Promise<string[]> 
 	return entries.filter((e) => e.isFile() && e.name.endsWith(suffix)).map((e) => e.name).sort();
 }
 
+async function pathExists(targetPath: string): Promise<boolean> {
+	try {
+		await fs.access(targetPath);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 async function listFilesRecursive(rootDir: string): Promise<string[]> {
 	const files: string[] = [];
+
+	if (!(await pathExists(rootDir))) return files;
 
 	async function walk(currentDir: string, relativeDir: string): Promise<void> {
 		const entries = await fs.readdir(currentDir, { withFileTypes: true });
@@ -135,7 +146,7 @@ function statsLine(label: string, stats: InstallStats): string {
 	return `${label} -> Created: ${stats.created.length}, Updated: ${stats.updated.length}, Unchanged: ${stats.unchanged.length}, Skipped: ${stats.skipped.length}`;
 }
 
-export default function tkBootstrapExtension(pi: ExtensionAPI) {
+export default function tfBootstrapExtension(pi: ExtensionAPI) {
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = path.dirname(__filename);
 	const agentsTemplateDir = path.resolve(__dirname, "..", "assets", "agents");
@@ -145,7 +156,7 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 
 	pi.registerCommand("tf-bootstrap", {
 		description:
-			"Install/update tk workflow templates. Usage: /tf-bootstrap [--scope user|project] [--dry-run] [--copy-prompts] [--copy-skills] [--copy-all|--materialize] [--no-overwrite]",
+			"Install/update tf workflow templates. Usage: /tf-bootstrap [--scope user|project] [--dry-run] [--copy-prompts] [--copy-skills] [--copy-all|--materialize] [--no-overwrite]",
 		handler: async (args, ctx) => {
 			const scope = parseScope(args);
 			const dryRun = parseFlag(args, "--dry-run");
@@ -175,7 +186,8 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 			}
 
 			let skillStats: InstallStats | null = null;
-			if (copyOptions.copySkills) {
+			const hasBundledSkills = await pathExists(skillsTemplateDir);
+			if (copyOptions.copySkills && hasBundledSkills) {
 				await ensureDir(skillsDestinationDir);
 				const skillFiles = await listFilesRecursive(skillsTemplateDir);
 				skillStats = await installFiles(skillsTemplateDir, skillsDestinationDir, skillFiles, installOptions);
@@ -191,11 +203,11 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 				chains: chainFiles,
 				copied: {
 					prompts: copyOptions.copyPrompts,
-					skills: copyOptions.copySkills,
+					skills: copyOptions.copySkills && hasBundledSkills,
 				},
 				noOverwrite,
 				promptsDir: copyOptions.copyPrompts ? promptsDestinationDir : null,
-				skillsDir: copyOptions.copySkills ? skillsDestinationDir : null,
+				skillsDir: copyOptions.copySkills && hasBundledSkills ? skillsDestinationDir : null,
 			};
 			if (!dryRun) await fs.writeFile(markerPath, JSON.stringify(marker, null, 2) + "\n", "utf8");
 
@@ -215,6 +227,7 @@ export default function tkBootstrapExtension(pi: ExtensionAPI) {
 				else lines.push("Prompts -> skipped (use --copy-prompts or --copy-all)");
 
 				if (skillStats) lines.push(statsLine(`Skills (${skillsDestinationDir})`, skillStats));
+				else if (copyOptions.copySkills && !hasBundledSkills) lines.push("Skills -> no bundled skills shipped in this package");
 				else lines.push("Skills -> skipped (use --copy-skills or --copy-all)");
 
 				ctx.ui.notify(lines.join("\n"), "info");

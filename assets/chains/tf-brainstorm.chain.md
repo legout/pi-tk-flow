@@ -1,6 +1,6 @@
 ---
 name: tf-brainstorm
-description: Brainstorm workflow with seeded anchoring (sequential preset: scout + context-builder + context-merger, then documenter)
+description: Brainstorm preset with seeded anchoring (static sequential chain; top-level /tf-brainstorm may add dynamic routing)
 ---
 
 ## scout
@@ -14,7 +14,7 @@ reads: false
 output: anchor-context-base.md
 progress: true
 
-Build anchored brainstorming context base for task: {task}. If `topic-seed.json` exists, read it first. If `from-seed.md` exists, synthesize it. Include constraints from .tf/AGENTS.md and .tf/knowledge when present.
+Build anchored brainstorming context base for task: {task}. If `topic-seed.json` exists, read it first. Read PROJECT.md when present, use AGENTS.md for repo operating guidance, and include lessons from .tf/AGENTS.md plus relevant .tf/knowledge when present. If `from-seed.md` exists, synthesize it.
 
 ## context-merger
 reads: scout-context.md, anchor-context-base.md

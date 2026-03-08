@@ -64,7 +64,8 @@ knowledge_pack:
   canonical_sources:
     - "https://..."
   suggested_paths:
-    - ".tf/knowledge/topics/<topic-slug>.md"
+    - ".tf/knowledge/topics/<topic-slug>/research.md"
+    - ".tf/knowledge/topics/<topic-slug>/summary.md"
     - ".tf/knowledge/tickets/<ticket-id>/research.md"
   no_new_knowledge_reason: "set only when reusable=false"
 ```

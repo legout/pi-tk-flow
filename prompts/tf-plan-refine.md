@@ -157,13 +157,13 @@ If `NEEDS_REFINEMENT=true`, run phase 2 with:
   "chain": [
     {
       "agent": "plan-fast",
-      "task": "Refine '<PLAN_DIR>/03-implementation-plan.md' using plan-gaps.md and plan-review.md. Write final refined plan back to '<PLAN_DIR>/03-implementation-plan.md' and persist a knowledge snapshot at '<KNOWLEDGE_TOPIC_DIR>/implementation-plan-refined.md'.",
+      "task": "Refine '<PLAN_DIR>/03-implementation-plan.md' using plan-gaps.md and plan-review.md. Write final refined plan back to '<PLAN_DIR>/03-implementation-plan.md' and persist a knowledge snapshot at '<KNOWLEDGE_TOPIC_DIR>/implementation-plan.md'.",
       "reads": <REFINE_PLAN_READS>,
       "output": "plan-refined.md"
     },
     {
       "agent": "documenter",
-      "task": "Write refinement summary to '<PLAN_DIR>/07-refinement-summary.md'. Include: major changes made, unresolved items, and whether ticketization is now GO or NO-GO. Also persist to '<KNOWLEDGE_TOPIC_DIR>/plan-refinement-summary.md'.",
+      "task": "Write refinement summary to '<PLAN_DIR>/07-refinement-summary.md'. Include: major changes made, unresolved items, and whether ticketization is now GO or NO-GO. Also persist to '<KNOWLEDGE_TOPIC_DIR>/refinement-summary.md'.",
       "reads": <REFINE_SUMMARY_READS>,
       "output": "refinement-summary.md"
     }

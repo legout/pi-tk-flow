@@ -1,6 +1,6 @@
 ---
 name: tf-plan-thorough
-description: Thorough planning workflow with seeded anchoring (sequential preset: scout + context-builder + context-merger, then PRD→Spec→Design→Plan)
+description: Thorough planning preset with seeded anchoring (static sequential PRD→Spec→Design→Plan chain)
 ---
 
 ## scout
@@ -14,7 +14,7 @@ reads: false
 output: anchor-context-base.md
 progress: true
 
-Build anchored planning context base for task: {task}. If `topic-seed.json` exists, read it first. If `from-seed.md` exists, synthesize it. Include constraints from .tf/AGENTS.md and .tf/knowledge when present.
+Build anchored planning context base for task: {task}. If `topic-seed.json` exists, read it first. Read PROJECT.md when present, use AGENTS.md for repo operating guidance, and include lessons from .tf/AGENTS.md plus relevant .tf/knowledge when present. If `from-seed.md` exists, synthesize it.
 
 ## context-merger
 reads: scout-context.md, anchor-context-base.md

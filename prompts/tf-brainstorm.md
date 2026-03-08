@@ -112,7 +112,7 @@ Use runtime defaults for phase 1:
         },
         {
           "agent": "context-builder",
-          "task": "Build anchored brainstorming context base for '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. Include constraints from .tf/AGENTS.md and .tf/knowledge when present. If from-seed.md exists, synthesize it.",
+          "task": "Build anchored brainstorming context base for '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. Read PROJECT.md when present, use AGENTS.md for repo operating guidance, and include lessons from .tf/AGENTS.md plus relevant .tf/knowledge when present. If from-seed.md exists, synthesize it.",
           "reads": <SEED_READS>,
           "output": "anchor-context-base.md"
         }
@@ -152,7 +152,7 @@ Use runtime defaults for phase 1:
         },
         {
           "agent": "context-builder",
-          "task": "Build anchored brainstorming context draft for '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. Include constraints from .tf/AGENTS.md and .tf/knowledge when present. If from-seed.md exists, synthesize it.",
+          "task": "Build anchored brainstorming context draft for '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. Read PROJECT.md when present, use AGENTS.md for repo operating guidance, and include lessons from .tf/AGENTS.md plus relevant .tf/knowledge when present. If from-seed.md exists, synthesize it.",
           "reads": <SEED_READS>,
           "output": "anchor-context-draft.md"
         }
@@ -187,7 +187,7 @@ Research step definitions:
 ```json
 {
   "agent": "researcher",
-  "task": "Research external best practices for '<TOPIC>' with focus on actionable options and trade-offs relevant to this repository context. Reuse existing .tf/knowledge first. Write chain artifact to 'research.md'. Also persist reusable findings to '<KNOWLEDGE_TOPIC_DIR>/brainstorm-research.md'.",
+  "task": "Research external best practices for '<TOPIC>' with focus on actionable options and trade-offs relevant to this repository context. Reuse existing .tf/knowledge first. Write chain artifact to 'research.md'. Also persist reusable findings to '<KNOWLEDGE_TOPIC_DIR>/research.md'.",
   "reads": ["anchor-context.md"],
   "output": "research.md"
 }
@@ -196,7 +196,7 @@ Research step definitions:
 ```json
 {
   "agent": "librarian",
-  "task": "Produce source-backed library internals/history findings for '<TOPIC>' with permalinks and concrete implications for this repo. Write chain artifact to 'library-research.md'. Also persist reusable findings to '<KNOWLEDGE_TOPIC_DIR>/brainstorm-library-research.md'.",
+  "task": "Produce source-backed library internals/history findings for '<TOPIC>' with permalinks and concrete implications for this repo. Write chain artifact to 'library-research.md'. Also persist reusable findings to '<KNOWLEDGE_TOPIC_DIR>/library-research.md'.",
   "reads": ["anchor-context.md"],
   "output": "library-research.md"
 }

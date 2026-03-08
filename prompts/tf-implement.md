@@ -147,7 +147,7 @@ Use a single `context-builder` run for anchoring:
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "agent": "context-builder",
-  "task": "Build implementation context for ticket <TICKET_ID>. Read ticket-seed.json first. Focus on the ticket, relevant lessons, and existing .tf/knowledge. Use explicit ticket file hints when available. Do NOT do broad codebase scouting; anchor only the context needed to implement this ticket. Output anchor-context.md with: Ticket Summary, Complexity Assessment, Research Gaps, External Libraries, Testing Requirements, Recommended Path (A/B/C), and concrete file hints to start from when known.",
+  "task": "Build implementation context for ticket <TICKET_ID>. Read ticket-seed.json first. Read PROJECT.md when present, use AGENTS.md for repo operating guidance, and focus on the ticket, relevant lessons, and existing .tf/knowledge. Use explicit ticket file hints when available. Do NOT do broad codebase scouting; anchor only the context needed to implement this ticket. Output anchor-context.md with: Ticket Summary, Complexity Assessment, Research Gaps, External Libraries, Testing Requirements, Recommended Path (A/B/C), and concrete file hints to start from when known.",
   "reads": ["ticket-seed.json"],
   "output": "anchor-context.md"
 }
@@ -667,7 +667,8 @@ Do NOT add:
 
 ### C) Research Persistence (Path C only)
 If research was conducted, persist reusable findings to `.tf/knowledge/`:
-- Topic files: `.tf/knowledge/topics/<topic-slug>.md`
+- Topic directory: `.tf/knowledge/topics/<topic-slug>/`
+  - recommended files: `summary.md`, `research.md`, `library-research.md`
 - Ticket research: `.tf/knowledge/tickets/<TICKET_ID>/research.md`
 
 ### D) Ticket Artifacts

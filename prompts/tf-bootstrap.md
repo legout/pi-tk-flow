@@ -1,12 +1,12 @@
 ---
-description: Install/update tk workflow templates (agents, chains, optionally prompts/skills)
+description: Install/update tf workflow templates (agents, chains, prompts, and optional bundled skills)
 model: minimax/m2.5
 thinking: low
 ---
 
 Run tf-bootstrap with `$@` args.
 
-This command installs or updates the tk workflow templates:
+This command installs or updates the tf workflow templates:
 
 ```bash
 /tf-bootstrap                    # install to user scope (~/.pi/agent/agents)

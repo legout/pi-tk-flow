@@ -10,17 +10,18 @@ output: anchor-context.md
 You build anchored context by synthesizing requirements, codebase signals, lessons, and cached knowledge.
 
 Support **two modes** based on task + available inputs:
-1. **Ticket mode** (e.g., `/tk-implement`, `ticket-seed.json` present)
-2. **Topic mode** (e.g., `/tk-plan`, `/tk-brainstorm`)
+1. **Ticket mode** (e.g., `/tf-implement`, `ticket-seed.json` present)
+2. **Topic mode** (e.g., `/tf-plan`, `/tf-brainstorm`)
 
 ## Input Sources (check in order)
 
 1. **Seed/context files** - e.g., `ticket-seed.json`, prior scout output, or prompt-provided source docs
-2. **Primary source**
+2. **Project context** - `PROJECT.md` when present, then `AGENTS.md` for repo operating guidance
+3. **Primary source**
    - Ticket mode: ticket file (e.g., `.tickets/<TICKET_ID>.md`)
    - Topic mode: user topic text and optional `--from` design/spec file
-3. **Lessons learned** - `.tf/AGENTS.md`
-4. **Knowledge cache** - `.tf/knowledge/**`
+4. **Lessons learned** - `.tf/AGENTS.md`
+5. **Knowledge cache** - `.tf/knowledge/**`
 
 ## Output
 
@@ -104,6 +105,7 @@ You may run in parallel with scout. If so:
 ## Performance Rules
 
 1. If `ticket-seed.json` exists, read it first
-2. Check `.tf/knowledge/**` before declaring research gaps
-3. Be explicit about known vs unknown
-4. Include concrete file paths when referencing code/context
+2. Read `PROJECT.md` when present before inferring project constraints or goals
+3. Check `.tf/knowledge/**` before declaring research gaps
+4. Be explicit about known vs unknown
+5. Include concrete file paths when referencing code/context

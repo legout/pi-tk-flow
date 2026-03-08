@@ -11,10 +11,13 @@ A reusable pi package for tf-driven planning + ticket implementation workflows.
   - `/tf-plan-refine`
   - `/tf-ticketize`
   - `/tf-implement`
-- Bootstrap command extension: `/tk-bootstrap`
+  - `/tf-refactor`
+  - `/tf-simplify`
+- Bootstrap command extension: `/tf-bootstrap`
 - Subagent templates under `assets/agents/`:
-  - context-builder, scout, context-merger, researcher, librarian, plan-fast, plan-deep, worker, reviewer, tester, fixer
-  - plan-gap-analyzer, plan-reviewer, documenter, refactorer, simplifier, tf-closer, ticketizer
+  - default workflow agents: context-builder, scout, context-merger, researcher, librarian, plan-fast, plan-deep, worker, reviewer, tester, fixer
+  - default workflow support agents: plan-gap-analyzer, plan-reviewer, documenter, tf-closer, ticketizer
+  - auxiliary agents: refactorer, simplifier
 - Reusable chain presets under `assets/chains/`:
   - `tf-brainstorm.chain.md`
   - `tf-plan.chain.md`
@@ -22,11 +25,21 @@ A reusable pi package for tf-driven planning + ticket implementation workflows.
   - `tf-plan-check.chain.md`
   - `tf-plan-refine.chain.md`
   - `tf-ticketize.chain.md`
+  - `tf-refactor.chain.md`
+  - `tf-simplify.chain.md`
   - `tf-path-a.chain.md`
   - `tf-path-b.chain.md`
   - `tf-path-c.chain.md`
 
-Implementation presets include a final `tf-closer` step for commit + `tk add-note` + tk close/status gating, plus a compact durable ticket artifact at `.tf/tickets/<ticket-id>/close-summary.md`.
+Prompt templates are the authoritative top-level workflow surface.
+Chain presets are reusable static building blocks that mirror the intended flow shape, but prompt commands may add dynamic routing, optional research decisions, preflight logic, or parallel execution around them.
+
+Not every shipped agent is used by the default `/tf-*` prompts. Some are auxiliary building blocks that can support specialized workflows outside the default planning and implementation paths.
+
+`tf-path-a`, `tf-path-b`, and `tf-path-c` are post-anchor execution presets: they assume `anchor-context.md` already exists for the current run.
+`tf-refactor` and `tf-simplify` chain presets are static representative workflows; the top-level prompt commands add dynamic ticket-vs-goal finalization and runtime flag handling.
+
+Implementation presets include a final `tf-closer` step for commit + `tk add-note` + tk close/status gating, plus a compact durable ticket artifact under `.tf/tickets/<ticket-id>/close-summary.md`.
 
 ## Install
 
@@ -35,8 +48,26 @@ Implementation presets include a final `tf-closer` step for commit + `tk add-not
 pi install git:github.com/legout/pi-tf-flow
 
 # or pin a release tag
-pi install git:github.com/legout/pi-tf-flow@v0.4.1
+pi install git:github.com/legout/pi-tf-flow@v0.5.0
 ```
+
+## Repository context
+
+This repository is both:
+1. the source code for the `pi-tk-flow` package, and
+2. a live user of `pi-tk-flow` for its own development.
+
+Package source-of-truth files live at the repo root and in shipped folders such as `prompts/`, `assets/`, `extensions/`, and `python/`.
+Self-hosting workflow artifacts live under `.tf/`, `.tickets/`, and `.subagent-runs/`.
+
+For the package/project distinction, see [`PROJECT.md`](PROJECT.md).
+For recommended `PROJECT.md` / `AGENTS.md` / `.tf/knowledge` conventions in downstream repos, see [`CONTEXT-GUIDE.md`](CONTEXT-GUIDE.md).
+For the project-aware refactor/simplify workflow design, see [`REFACTOR-SIMPLIFY-SPEC.md`](REFACTOR-SIMPLIFY-SPEC.md).
+For the full framework assessment and remediation roadmap, see [`FRAMEWORK-ASSESSMENT-AND-ROADMAP.md`](FRAMEWORK-ASSESSMENT-AND-ROADMAP.md).
+
+For best results in projects using `pi-tk-flow`, create both:
+- `PROJECT.md` for durable project/product/system context
+- `AGENTS.md` for repo-specific agent operating guidance
 
 ### pi-subagents prerequisite
 
@@ -72,13 +103,15 @@ pi install npm:pi-prompt-template-model
 
 | Command | Model | Thinking |
 |---------|-------|----------|
-| `/tk-bootstrap` | `minimax/m2.5` | `low` |
+| `/tf-bootstrap` | `minimax/m2.5` | `low` |
 | `/tf-brainstorm` | `glm-5` | `medium` |
 | `/tf-implement` | `glm-5` | `medium` |
 | `/tf-plan` | `glm-5` | `medium` |
 | `/tf-plan-check` | `glm-5` | `medium` |
 | `/tf-plan-refine` | `glm-5` | `medium` |
 | `/tf-ticketize` | `glm-5` | `medium` |
+| `/tf-refactor` | `glm-5` | `medium` |
+| `/tf-simplify` | `glm-5` | `medium` |
 
 > **Note:** This mapping table is the **canonical source** for prompt and documentation alignment. When updating model assignments, update this table first.
 
@@ -90,37 +123,40 @@ pi install npm:pi-prompt-template-model
 4. Project defaults (`.pi/settings.json`)
 5. Global defaults (`~/.pi/agent/settings.json`)
 
-For full details on model selection behavior and subagent handling, see [`.tf/knowledge/topics/model-configuration.md`](.tf/knowledge/topics/model-configuration.md).
+For full details on model selection behavior and subagent handling, see [`MODEL-CONFIGURATION.md`](MODEL-CONFIGURATION.md).
 
 Commands continue to execute normally when the extension is not installed—no error or warning is emitted.
 
 ## Bootstrap templates
 
+> **Migration note:** the bootstrap pi command is `/tf-bootstrap`. Any older `/tk-bootstrap` references are legacy and should be updated.
+
+
 ```bash
 # install/update user-level agents + chain presets (~/.pi/agent/agents)
-/tk-bootstrap --scope user
+/tf-bootstrap --scope user
 
 # install/update project-level agents + chain presets (.pi/agents)
-/tk-bootstrap --scope project
+/tf-bootstrap --scope project
 
-# also materialize prompts + skills to local directories
+# also materialize prompts (and any bundled skills) to local directories
 # user scope: ~/.pi/agent/prompts + ~/.pi/agent/skills
-/tk-bootstrap --scope user --copy-all
+/tf-bootstrap --scope user --copy-all
 
 # project scope: .pi/prompts + .pi/skills
-/tk-bootstrap --scope project --copy-all
+/tf-bootstrap --scope project --copy-all
 
 # preview only
-/tk-bootstrap --scope user --copy-all --dry-run
+/tf-bootstrap --scope user --copy-all --dry-run
 
 # preserve local edits (never overwrite changed files)
-/tk-bootstrap --scope project --copy-all --no-overwrite
+/tf-bootstrap --scope project --copy-all --no-overwrite
 ```
 
 Flags:
 - `--copy-prompts`: copy `prompts/*.md` into scope-local prompts directory
-- `--copy-skills`: copy `skills/**` into scope-local skills directory
-- `--copy-all` (alias `--materialize`): copy both prompts and skills
+- `--copy-skills`: copy `skills/**` into scope-local skills directory when the package ships bundled skills
+- `--copy-all` (alias `--materialize`): copy prompts and any bundled skills
 - `--no-overwrite`: do not replace existing files when content differs (reported as `Skipped`)
 - `--dry-run`: preview create/update/skip counts without writing
 
@@ -128,6 +164,10 @@ Existing file behavior:
 - Missing file → `Created`
 - Existing identical file → `Unchanged`
 - Existing different file → `Updated` by default, or `Skipped` with `--no-overwrite`
+
+Current package note:
+- `pi-tk-flow` currently ships prompts, agents, chains, and extensions.
+- If `--copy-skills` is requested in a release with no bundled skills, `/tf-bootstrap` reports that no bundled skills are shipped and continues safely.
 
 ## Run
 
@@ -142,7 +182,7 @@ Existing file behavior:
 /tf-plan <topic> --thorough               # sequential synthesis mode
 /tf-plan <topic> --mode feature|refactor|simplify
 /tf-plan <topic> --from .tf/plans/<plan-dir>/00-design.md
-# plan/brainstorm auto-route researcher/librarian when needed and persist findings to .tf/knowledge/topics/<topic-slug>/
+# plan/brainstorm auto-route researcher/librarian when needed and persist findings under .tf/knowledge/topics/<topic-slug>/
 
 # 2) Optional plan quality gate + refinement
 /tf-plan-check .tf/plans/<plan-dir>
@@ -161,6 +201,12 @@ Existing file behavior:
 /tf-implement <ticket-id> --interactive             # supervised overlay (blocking)
 /tf-implement <ticket-id> --hands-free              # agent-monitored overlay
 /tf-implement <ticket-id> --dispatch                # background + notify
+
+# 5) Project-aware structural improvement workflows
+/tf-refactor <goal-or-ticket-id>                    # behavior-preserving structural refactor
+/tf-refactor <goal-or-ticket-id> --scope src/auth --thorough
+/tf-simplify <goal-or-ticket-id>                    # behavior-preserving simplification
+/tf-simplify <goal-or-ticket-id> --hotspots-only --fast
 ```
 
 Flag behavior:
@@ -174,6 +220,30 @@ Flag behavior:
 - `--hands-free` and `--dispatch` can combine with `--clarify`
 - `tf-plan`, `tf-plan-check`, and `tf-plan-refine` support `--fast` (default) and `--thorough`.
 - `tf-ticketize` defaults to create mode. Use `--dry-run` to preview without creating tickets.
+- `tf-refactor` and `tf-simplify` support ticket mode or freeform goal mode, and are project-aware via `PROJECT.md`, `AGENTS.md`, and `.tf/knowledge/...` when present.
+
+### `/tf-refactor` and `/tf-simplify`
+
+These commands are project-aware structural improvement workflows.
+
+`/tf-refactor` is for behavior-preserving structural reorganization:
+- improve module boundaries
+- reduce duplication
+- clarify naming and structure
+- prepare code for future work
+
+`/tf-simplify` is for behavior-preserving complexity reduction:
+- reduce nesting and branching
+- simplify control flow
+- split long functions
+- make code easier to understand and maintain
+
+Shared behavior:
+- supports **ticket mode** when the target resolves to `.tickets/<id>.md`
+- supports **goal mode** for freeform project work
+- reads `PROJECT.md`, `AGENTS.md`, and relevant `.tf/knowledge/...` when present
+- uses scoped planning + specialist execution + review/test validation
+- uses `tf-closer` only in ticket mode; goal mode writes a summary without mutating `tk`
 
 ### `/tf-implement` workflow
 
@@ -357,7 +427,7 @@ textual serve "python -m pi_tk_flow_ui" --host 0.0.0.0 --port 8000
 | `Error: UI dependencies not installed` | Run `pip install -e './python[ui]'` |
 | `tk CLI not found` | Status defaults to "open"; install `tk` for live status |
 | `No tickets found` | Create a plan with `/tf-plan` first |
-| `No topics found` | Add markdown files to `.tf/knowledge/topics/` |
+| `No topics found` | Add topic directories and markdown files under `.tf/knowledge/topics/<topic-slug>/` |
 | Editor doesn't open | Set `$EDITOR` or `$PAGER` environment variable |
 | Colors look wrong | Ensure your terminal supports 256 colors |
 
@@ -380,6 +450,10 @@ textual serve "python -m pi_tk_flow_ui" --host 0.0.0.0 --port 8000
 - `.tf/plans/<date>-<topic>/07-refinement-summary.md` (optional refine step)
 - `.tf/plans/<date>-<topic>/tickets.yaml`
 - `.subagent-runs/*` chain artifacts
-- `.tf/knowledge/*` persistent research cache
+- `.tf/knowledge/` persistent research cache
+  - recommended topic layout: `.tf/knowledge/topics/<topic-slug>/summary.md`, `research.md`, `library-research.md`
+  - common optional topic artifacts: `anchor-context.md`, `plan-gaps.md`, `plan-review.md`, `implementation-plan.md`, `refinement-summary.md`
+  - recommended ticket layout: `.tf/knowledge/tickets/<ticket-id>/research.md`
+- `.tf/tickets/<ticket-id>/close-summary.md` durable ticket close artifact
 - `.tf/progress.md` progress entries
 - `.tf/AGENTS.md` lessons learned (new + useful only)
