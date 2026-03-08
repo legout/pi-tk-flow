@@ -28,6 +28,7 @@ PACKAGE_SURFACE_DIRS = [
     ROOT / "assets",
     ROOT / "extensions",
     ROOT / "python",
+    ROOT / "docs",
 ]
 PACKAGE_SURFACE_ROOT_FILES = [
     ROOT / "README.md",
@@ -37,6 +38,15 @@ PACKAGE_SURFACE_ROOT_FILES = [
     ROOT / "MODEL-CONFIGURATION.md",
     ROOT / "REFACTOR-SIMPLIFY-SPEC.md",
 ]
+EXPECTED_DOC_COPIES = {
+    "README.md",
+    "AGENTS.md",
+    "PROJECT.md",
+    "CONTEXT-GUIDE.md",
+    "MODEL-CONFIGURATION.md",
+    "REFACTOR-SIMPLIFY-SPEC.md",
+    "FRAMEWORK-ASSESSMENT-AND-ROADMAP.md",
+}
 TEXT_SUFFIXES = {".md", ".ts", ".py", ".json", ".toml"}
 
 
@@ -96,6 +106,13 @@ def test_expected_chain_files_exist() -> None:
 
 
 
+def test_expected_docs_copies_exist() -> None:
+    actual = {p.name for p in (ROOT / "docs").glob("*.md")}
+    missing = EXPECTED_DOC_COPIES - actual
+    assert not missing, f"Missing docs copies: {sorted(missing)}"
+
+
+
 def shipped_commands() -> list[str]:
     return [
         "/tf-bootstrap",
@@ -123,6 +140,16 @@ def test_readme_mentions_new_chain_presets() -> None:
     readme = README.read_text(encoding="utf-8")
     assert "tf-refactor.chain.md" in readme
     assert "tf-simplify.chain.md" in readme
+
+
+
+def test_readme_links_to_docs_copies() -> None:
+    readme = README.read_text(encoding="utf-8")
+    assert "docs/PROJECT.md" in readme
+    assert "docs/CONTEXT-GUIDE.md" in readme
+    assert "docs/MODEL-CONFIGURATION.md" in readme
+    assert "docs/REFACTOR-SIMPLIFY-SPEC.md" in readme
+    assert "docs/FRAMEWORK-ASSESSMENT-AND-ROADMAP.md" in readme
 
 
 
@@ -182,6 +209,12 @@ def test_no_wrong_ticket_cli_namespace_in_package_surface() -> None:
         content = path.read_text(encoding="utf-8")
         for match in WRONG_TICKET_CLI_RE.finditer(content):
             line_number = content[: match.start()].count("\n") + 1
+            line = content.splitlines()[line_number - 1]
+
+            # Allow retrospective documentation that explicitly names the old wrong commands.
+            if path.name == "FRAMEWORK-ASSESSMENT-AND-ROADMAP.md" and "wrong `tf add-note` / `tf close` / `tf status`" in line:
+                continue
+
             violations.append(f"{path.relative_to(ROOT)}:{line_number}: {match.group(0)}")
 
     assert not violations, "Wrong ticket CLI namespace found:\n" + "\n".join(violations)
@@ -197,8 +230,8 @@ def test_no_legacy_tk_prefixed_workflow_commands_in_package_surface() -> None:
             line_number = content[: match.start()].count("\n") + 1
             line = content.splitlines()[line_number - 1]
 
-            # Allow the single README migration note that explicitly documents the rename.
-            if path == README and "/tk-bootstrap" in line and "legacy" in line.lower():
+            # Allow the README migration note in root and docs copies that explicitly documents the rename.
+            if path.name == "README.md" and "/tk-bootstrap" in line and "legacy" in line.lower():
                 continue
 
             violations.append(f"{path.relative_to(ROOT)}:{line_number}: {match.group(0)}")

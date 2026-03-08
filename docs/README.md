@@ -61,10 +61,10 @@ This repository is both:
 Package source-of-truth files live at the repo root and in shipped folders such as `prompts/`, `assets/`, `extensions/`, and `python/`. Root markdown docs are also mirrored under `docs/` for easier browsing.
 Self-hosting workflow artifacts live under `.tf/`, `.tickets/`, and `.subagent-runs/`.
 
-For the package/project distinction, see [`PROJECT.md`](docs/PROJECT.md).
-For recommended `PROJECT.md` / `AGENTS.md` / `.tf/knowledge` conventions in downstream repos, see [`CONTEXT-GUIDE.md`](docs/CONTEXT-GUIDE.md).
-For the project-aware refactor/simplify workflow design, see [`REFACTOR-SIMPLIFY-SPEC.md`](docs/REFACTOR-SIMPLIFY-SPEC.md).
-For the full framework assessment and remediation roadmap, see [`FRAMEWORK-ASSESSMENT-AND-ROADMAP.md`](docs/FRAMEWORK-ASSESSMENT-AND-ROADMAP.md).
+For the package/project distinction, see [`PROJECT.md`](PROJECT.md).
+For recommended `PROJECT.md` / `AGENTS.md` / `.tf/knowledge` conventions in downstream repos, see [`CONTEXT-GUIDE.md`](CONTEXT-GUIDE.md).
+For the project-aware refactor/simplify workflow design, see [`REFACTOR-SIMPLIFY-SPEC.md`](REFACTOR-SIMPLIFY-SPEC.md).
+For the full framework assessment and remediation roadmap, see [`FRAMEWORK-ASSESSMENT-AND-ROADMAP.md`](FRAMEWORK-ASSESSMENT-AND-ROADMAP.md).
 
 For best results in projects using `pi-tk-flow`, create both:
 - `PROJECT.md` for durable project/product/system context
@@ -127,7 +127,7 @@ pi install npm:pi-prompt-template-model
 4. Project defaults (`.pi/settings.json`)
 5. Global defaults (`~/.pi/agent/settings.json`)
 
-For full details on model selection behavior and subagent handling, see [`MODEL-CONFIGURATION.md`](docs/MODEL-CONFIGURATION.md).
+For full details on model selection behavior and subagent handling, see [`MODEL-CONFIGURATION.md`](MODEL-CONFIGURATION.md).
 
 Commands continue to execute normally when the extension is not installed—no error or warning is emitted.
 
