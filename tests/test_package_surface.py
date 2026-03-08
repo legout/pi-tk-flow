@@ -42,6 +42,7 @@ TEXT_SUFFIXES = {".md", ".ts", ".py", ".json", ".toml"}
 
 EXPECTED_PROMPTS = {
     "tf-bootstrap.md",
+    "tf-init.md",
     "tf-brainstorm.md",
     "tf-plan.md",
     "tf-plan-check.md",
@@ -67,7 +68,7 @@ EXPECTED_CHAINS = {
 }
 
 
-LEGACY_TF_WORKFLOW_COMMAND_RE = re.compile(r"/tk-(bootstrap|implement|brainstorm|plan|plan-check|plan-refine|ticketize|refactor|simplify)\b")
+LEGACY_TF_WORKFLOW_COMMAND_RE = re.compile(r"/tk-(bootstrap|init|implement|brainstorm|plan|plan-check|plan-refine|ticketize|refactor|simplify)\b")
 WRONG_TICKET_CLI_RE = re.compile(r"\btf (add-note|close|status)\b")
 
 
@@ -98,6 +99,7 @@ def test_expected_chain_files_exist() -> None:
 def shipped_commands() -> list[str]:
     return [
         "/tf-bootstrap",
+        "/tf-init",
         "/tf-brainstorm",
         "/tf-plan",
         "/tf-plan-check",

@@ -49,7 +49,7 @@ Treat the first group as product code and product documentation. Treat the secon
 
 ## Architecture Overview
 The package is organized into a few main layers:
-- `prompts/`: top-level pi workflow entry points (`/tf-plan`, `/tf-ticketize`, `/tf-implement`, ...)
+- `prompts/`: top-level pi workflow entry points (`/tf-init`, `/tf-plan`, `/tf-ticketize`, `/tf-implement`, ...)
 - `assets/agents/`: reusable subagent definitions used by prompts/chains
 - `assets/chains/`: reusable chain presets
 - `extensions/`: pi extension commands such as bootstrap / auxiliary tooling

@@ -36,6 +36,7 @@ Current authoritative command-to-model mapping:
 | Command | Model | Thinking |
 |---------|-------|----------|
 | `/tf-bootstrap` | `minimax/m2.5` | `low` |
+| `/tf-init` | `glm-5` | `medium` |
 | `/tf-brainstorm` | `glm-5` | `medium` |
 | `/tf-implement` | `glm-5` | `medium` |
 | `/tf-plan` | `glm-5` | `medium` |

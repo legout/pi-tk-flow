@@ -5,6 +5,7 @@ A reusable pi package for tf-driven planning + ticket implementation workflows.
 ## Includes
 
 - Prompt templates:
+  - `/tf-init`
   - `/tf-brainstorm`
   - `/tf-plan`
   - `/tf-plan-check`
@@ -48,7 +49,7 @@ Implementation presets include a final `tf-closer` step for commit + `tk add-not
 pi install git:github.com/legout/pi-tf-flow
 
 # or pin a release tag
-pi install git:github.com/legout/pi-tf-flow@v0.5.0
+pi install git:github.com/legout/pi-tf-flow@v0.6.0
 ```
 
 ## Repository context
@@ -68,6 +69,8 @@ For the full framework assessment and remediation roadmap, see [`FRAMEWORK-ASSES
 For best results in projects using `pi-tk-flow`, create both:
 - `PROJECT.md` for durable project/product/system context
 - `AGENTS.md` for repo-specific agent operating guidance
+
+You can create these manually, or use `/tf-init` to generate them together with `.tf/knowledge/baselines/...` starter files.
 
 ### pi-subagents prerequisite
 
@@ -104,6 +107,7 @@ pi install npm:pi-prompt-template-model
 | Command | Model | Thinking |
 |---------|-------|----------|
 | `/tf-bootstrap` | `minimax/m2.5` | `low` |
+| `/tf-init` | `glm-5` | `medium` |
 | `/tf-brainstorm` | `glm-5` | `medium` |
 | `/tf-implement` | `glm-5` | `medium` |
 | `/tf-plan` | `glm-5` | `medium` |
@@ -169,10 +173,46 @@ Current package note:
 - `pi-tk-flow` currently ships prompts, agents, chains, and extensions.
 - If `--copy-skills` is requested in a release with no bundled skills, `/tf-bootstrap` reports that no bundled skills are shipped and continues safely.
 
+## Project initialization
+
+```bash
+# analyze an existing repo and draft pi-tk-flow context files
+/tf-init --brownfield
+
+# initialize a new repo from a short brief or follow-up interview
+/tf-init --greenfield "internal analytics platform for support teams"
+
+# let the command auto-detect greenfield vs brownfield
+/tf-init
+
+# preview without writing
+/tf-init --brownfield --dry-run
+
+# create only missing files
+/tf-init --brownfield --no-overwrite
+```
+
+`/tf-init` creates or updates:
+- `PROJECT.md`
+- `AGENTS.md` (with a standard pi-tk-flow managed block plus project-specific guidance)
+- `.tf/AGENTS.md`
+- `.tf/knowledge/README.md`
+- `.tf/knowledge/baselines/coding-standards.md`
+- `.tf/knowledge/baselines/testing.md`
+- `.tf/knowledge/baselines/architecture.md`
+- `.tf/plans/`, `.tf/knowledge/topics/`, `.tf/knowledge/tickets/`, and `.tickets/`
+
+The command keeps baseline knowledge in dedicated `.tf/knowledge/baselines/...` files and links them from `PROJECT.md`.
+In brownfield mode it synthesizes drafts from existing repo evidence.
+In greenfield mode it uses the provided brief and asks a compact setup interview when necessary.
+
 ## Run
 
 ```bash
-# 0) Optional brainstorming brief
+# 0) Initialize project context (recommended before planning)
+/tf-init --brownfield
+
+# 1) Optional brainstorming brief
 /tf-brainstorm <topic>
 /tf-brainstorm <topic> --mode feature|refactor|simplify
 # researcher/librarian are auto-routed by the command when needed (no research flag)

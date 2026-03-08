@@ -1,11 +1,11 @@
 # Refactor / Simplify Command Spec
 
-This document proposes two project-aware workflow commands for `pi-tk-flow`:
+This document describes two project-aware workflow commands in `pi-tk-flow`:
 
 - `/tf-refactor`
 - `/tf-simplify`
 
-These commands are **not yet implemented**. They are intended as first-class workflow surfaces built on top of the existing specialist agents:
+These commands are implemented as first-class workflow surfaces built on top of the existing specialist agents:
 
 - `assets/agents/refactorer.md`
 - `assets/agents/simplifier.md`

@@ -39,7 +39,8 @@ Before non-trivial work, read in this order:
 ## Command Boundary
 - Use `tk` for ticket operations: `tk ready`, `tk blocked`, `tk show`, `tk add-note`, `tk status`, `tk close`, etc.
 - Use `/tf-bootstrap` to install/update shipped pi-tk-flow templates.
-- Use `/tf-brainstorm`, `/tf-plan`, `/tf-plan-check`, `/tf-plan-refine`, `/tf-ticketize`, and `/tf-implement` for workflow execution.
+- Use `/tf-init` to initialize project context for greenfield or brownfield adoption.
+- Use `/tf-brainstorm`, `/tf-plan`, `/tf-plan-check`, `/tf-plan-refine`, `/tf-ticketize`, `/tf-implement`, `/tf-refactor`, and `/tf-simplify` for workflow execution.
 
 ## Workflow Expectations
 - Keep product-level workflow definitions in the shipped package surface, not in `.tf/`.

@@ -167,11 +167,13 @@ For a new project adopting `pi-tk-flow`, create these early:
 - `.tf/knowledge/baselines/testing.md`
 - `.tf/knowledge/baselines/architecture.md`
 
+The recommended shortcut is to let `/tf-init --greenfield` create these for you.
+
 ### Greenfield sequence
-1. Write `PROJECT.md`
-2. Write `AGENTS.md`
-3. Bootstrap `pi-tk-flow`
-4. Add baseline knowledge files
+1. Install `pi-tk-flow` and `pi-subagents`
+2. Optionally run `/tf-bootstrap --scope project --copy-all`
+3. Run `/tf-init --greenfield` with a short project brief
+4. Review/refine the generated `PROJECT.md`, `AGENTS.md`, and baseline files
 5. Use `/tf-brainstorm` or `/tf-plan`
 6. Run `/tf-plan-check` when the work is non-trivial
 7. Run `/tf-ticketize`
@@ -183,31 +185,43 @@ For a new project adopting `pi-tk-flow`, create these early:
 
 Brownfield adoption should stabilize context before optimizing workflow details.
 
-## Phase 1 — Create `PROJECT.md`
-Synthesize it from:
+## Phase 1 — Run `/tf-init --brownfield`
+Let the command scan the existing repo and synthesize first-pass versions of:
+- `PROJECT.md`
+- `AGENTS.md`
+- `.tf/AGENTS.md`
+- `.tf/knowledge/README.md`
+- `.tf/knowledge/baselines/coding-standards.md`
+- `.tf/knowledge/baselines/testing.md`
+- `.tf/knowledge/baselines/architecture.md`
+
+It should derive these from:
 - `README.md`
 - existing architecture docs
 - deployment docs
 - CI/CD files
 - code layout
-- tribal knowledge
+- representative code and tests
+- tribal knowledge or optional follow-up questions
 
-Include one explicit section:
+Make sure `PROJECT.md` includes one explicit section:
 - `Current Reality`
 
 That prevents idealized docs from misleading agents.
 
-## Phase 2 — Refactor `AGENTS.md`
+## Phase 2 — Review the generated `AGENTS.md`
+Keep the standard pi-tk-flow managed block intact.
+Refine only the project-specific guidance beneath it.
+
 Move out of `AGENTS.md` anything that belongs in `PROJECT.md`:
 - product description
 - long architecture narrative
 - stack explanation
 - business/domain summary
 
-Keep in `AGENTS.md`:
-- read order
+Keep in the project-specific part of `AGENTS.md`:
+- read order adjustments
 - workflow expectations
-- command boundary
 - repo guardrails
 - knowledge rules
 - concise reusable lessons policy

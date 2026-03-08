@@ -20,6 +20,7 @@ MAPPING_ROW_RE = re.compile(r"\|\s*`(?P<command>/tf-[^`]+)`\s*\|\s*`(?P<model>[^
 
 PROMPT_TO_COMMAND = {
     "tf-bootstrap.md": "/tf-bootstrap",
+    "tf-init.md": "/tf-init",
     "tf-brainstorm.md": "/tf-brainstorm",
     "tf-plan.md": "/tf-plan",
     "tf-plan-check.md": "/tf-plan-check",
@@ -32,6 +33,7 @@ PROMPT_TO_COMMAND = {
 
 
 EXPECTED_FLAG_SETS = {
+    "tf-init.md": {"--greenfield", "--brownfield", "--from", "--dry-run", "--no-overwrite"},
     "tf-implement.md": {"--async", "--clarify", "--interactive", "--hands-free", "--dispatch"},
     "tf-refactor.md": {"--from", "--scope", "--fast", "--thorough", "--preserve-api", "--prepare-for", "--async", "--clarify"},
     "tf-simplify.md": {"--from", "--scope", "--fast", "--thorough", "--hotspots-only", "--max-function-lines", "--async", "--clarify"},
@@ -86,6 +88,28 @@ def test_tf_bootstrap_prompt_and_extension_are_aligned() -> None:
     assert 'pi.registerCommand("tf-bootstrap"' in extension_text
     assert "Run tf-bootstrap with `$@` args." in prompt_text
     assert "/tf-bootstrap" in readme
+
+
+
+def test_tf_init_prompt_defines_required_project_context_outputs() -> None:
+    prompt_text = read_text(PROMPTS_DIR / "tf-init.md")
+
+    for required in [
+        "PROJECT.md",
+        "AGENTS.md",
+        ".tf/AGENTS.md",
+        ".tf/knowledge/README.md",
+        ".tf/knowledge/baselines/coding-standards.md",
+        ".tf/knowledge/baselines/testing.md",
+        ".tf/knowledge/baselines/architecture.md",
+        "<!-- PI-TK-FLOW:START -->",
+        "<!-- PI-TK-FLOW:END -->",
+        "Project-specific guidance",
+        "greenfield",
+        "brownfield",
+        "/tf-init",
+    ]:
+        assert required in prompt_text, f"Missing tf-init contract piece: {required}"
 
 
 
@@ -189,6 +213,7 @@ def test_knowledge_persistence_uses_canonical_topic_filenames() -> None:
 
 def test_no_flat_topic_file_paths_in_package_prompts() -> None:
     for prompt_name in [
+        "tf-init.md",
         "tf-implement.md",
         "tf-plan.md",
         "tf-brainstorm.md",
