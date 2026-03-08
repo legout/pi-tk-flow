@@ -82,7 +82,7 @@ Some prompts may specify multiple models (e.g., `model: glm-5-flash, glm-5`):
 
 | Command | Model | Thinking |
 |---------|-------|----------|
-| `/tf-bootstrap` | `minimax/m2.5` | `low` |
+| `/tk-bootstrap` | `minimax/m2.5` | `low` |
 | `/tf-brainstorm` | `glm-5` | `medium` |
 | `/tf-implement` | `glm-5` | `medium` |
 | `/tf-plan` | `glm-5` | `medium` |
