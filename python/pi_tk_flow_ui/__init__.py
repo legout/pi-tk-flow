@@ -1,6 +1,6 @@
 """pi-tk-flow-ui: TUI for pi-tk-flow ticket management.
 
-A Textual-based terminal UI for browsing tickets and knowledge topics
+A Textual-based terminal UI for browsing tickets and plans
 in pi-tk-flow managed projects.
 """
 

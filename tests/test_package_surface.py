@@ -21,6 +21,7 @@ PROMPTS_DIR = ROOT / "prompts"
 CHAINS_DIR = ROOT / "assets" / "chains"
 AGENTS_DIR = ROOT / "assets" / "agents"
 PACKAGE_JSON = ROOT / "package.json"
+PYPROJECT = ROOT / "pyproject.toml"
 README = ROOT / "README.md"
 MODEL_CONFIGURATION = ROOT / "MODEL-CONFIGURATION.md"
 PACKAGE_SURFACE_DIRS = [
@@ -143,6 +144,26 @@ def test_readme_mentions_new_chain_presets() -> None:
 
 
 
+def test_readme_ui_section_matches_current_tui_surface() -> None:
+    readme = README.read_text(encoding="utf-8")
+
+    assert "browsing tickets and plans" in readme
+    assert "Plans Tab" in readme
+    assert "Open Ticket Breakdown (04-ticket-breakdown.md)" in readme
+    assert "uv tool install" in readme
+    assert "uvx" in readme
+    assert "tf-ui" in readme
+    assert "/tf ui" not in readme
+    assert "Topics Tab" not in readme
+    assert "TF_KNOWLEDGE_DIR" not in readme
+
+
+
+def test_tf_ui_pi_extension_removed() -> None:
+    assert not (ROOT / "extensions" / "tf-ui.ts").exists()
+
+
+
 def test_readme_links_to_docs_copies() -> None:
     readme = README.read_text(encoding="utf-8")
     assert "docs/PROJECT.md" in readme
@@ -174,6 +195,15 @@ def test_package_manifest_registers_prompts_and_extensions_only() -> None:
     assert pi_config["prompts"] == ["./prompts"]
     assert pi_config["extensions"] == ["./extensions"]
     assert "skills" not in pi_config, "package.json should not register a missing ./skills directory"
+
+
+
+def test_pyproject_exposes_only_standalone_tf_ui_script() -> None:
+    pyproject_text = PYPROJECT.read_text(encoding="utf-8")
+
+    assert 'tf-ui = "pi_tk_flow_ui.__main__:main"' in pyproject_text
+    assert 'tf = "pi_tk_flow_ui.cli:main"' not in pyproject_text
+    assert 'tf-web = "pi_tk_flow_ui.__main__:main_web"' not in pyproject_text
 
 
 

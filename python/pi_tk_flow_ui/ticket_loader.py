@@ -1,14 +1,13 @@
-"""Ticket loading from YAML files and tk CLI status queries.
+"""Ticket loading from .tickets/*.md files with frontmatter parsing.
 
-This module provides ticket loading from .tf/plans/*/tickets.yaml files
-with live status refresh from the tk CLI.
+This module provides efficient loading of ticket metadata from `.tickets/*.md` files,
+with support for lazy loading of full ticket body content.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import subprocess
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -17,362 +16,338 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+# Regex pattern for YAML frontmatter (supports both Unix \n and Windows \r\n line endings)
+FRONTMATTER_PATTERN = re.compile(r"^---\s*\r?\n(.*?)\r?\n---\s*\r?\n(.*)$", re.DOTALL)
+
+# Regex pattern for markdown title (first # heading)
+TITLE_PATTERN = re.compile(r"^#\s*(.+)$", re.MULTILINE)
+
 
 @dataclass
 class Ticket:
-    """Represents a ticket parsed from tickets.yaml.
-    
+    """Represents a ticket with metadata and lazy body loading.
+
     Attributes:
-        id: Unique ticket identifier (e.g., "S1", "my-ticket")
-        title: Short ticket title
-        body: Full description/body text
-        status: Current status (open, in_progress, closed)
-        deps: List of blocking dependency ticket IDs
-        tags: List of tags/labels
-        assignee: Optional assignee identifier
-        priority: Optional priority number (lower = higher priority)
-        ticket_type: Type of ticket (feature, bug, chore, epic, etc.)
-        plan_name: Name of the plan directory
-        plan_dir: Full path to the plan directory
-        external_ref: Optional external reference (e.g., GitHub issue)
+        id: Ticket ID (e.g., "ptf-102j")
+        status: Ticket status (e.g., "open", "closed", "in_progress")
+        title: Ticket title from markdown heading
+        file_path: Path to the ticket markdown file
+        deps: List of ticket dependencies
+        tags: List of tags
+        assignee: Optional assignee username
+        external_ref: Optional external reference
+        priority: Optional priority level
+        ticket_type: Optional ticket type
+        created: Optional creation timestamp
+        links: List of linked tickets
+        plan_name: Deprecated, kept for compatibility
+        plan_dir: Deprecated, kept for compatibility
+        _body: Cached body content (None until loaded)
+        _body_loaded: Whether body has been loaded
     """
     id: str
+    status: str
     title: str
-    body: str
-    status: str = "open"
+    file_path: Path
     deps: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     assignee: Optional[str] = None
-    priority: Optional[int] = None
-    ticket_type: str = "feature"
-    plan_name: str = ""
-    plan_dir: str = ""
     external_ref: Optional[str] = None
+    priority: Optional[int] = None
+    ticket_type: Optional[str] = None
+    created: Optional[str] = None
+    links: list[str] = field(default_factory=list)
+    plan_name: str = ""  # Deprecated, kept for compatibility
+    plan_dir: str = ""  # Deprecated, kept for compatibility
+    _body: Optional[str] = field(default=None, repr=False)
+    _body_loaded: bool = field(default=False, repr=False)
+
+    @property
+    def body(self) -> str:
+        """Get the full ticket body, loading lazily if needed.
+
+        Returns:
+            The markdown body content (excluding frontmatter and title).
+        """
+        if not self._body_loaded:
+            self._load_body()
+        return self._body or ""
+
+    def _load_body(self) -> None:
+        """Load the body content from disk."""
+        try:
+            content = self.file_path.read_text(encoding="utf-8")
+            # Extract body after frontmatter
+            match = FRONTMATTER_PATTERN.match(content)
+            if match:
+                body_content = match.group(2)
+            else:
+                body_content = content
+
+            # Remove title line if present
+            lines = body_content.split("\n")
+            if lines and lines[0].startswith("# "):
+                body_content = "\n".join(lines[1:]).lstrip("\n")
+
+            self._body = body_content
+        except (IOError, OSError) as e:
+            logger.warning(f"Failed to load body for ticket {self.id}: {e}")
+            self._body = ""
+        self._body_loaded = True
 
 
 class TicketLoadError(Exception):
-    """Raised when ticket loading fails."""
+    """Raised when a ticket cannot be loaded."""
     pass
 
 
 class YamlTicketLoader:
-    """Loads tickets from .tf/plans/*/tickets.yaml files.
-    
-    This loader:
-    1. Scans .tf/plans/ for all subdirectories containing tickets.yaml
-    2. Parses each YAML file and extracts slice/epic definitions
-    3. Maps YAML fields to Ticket objects
-    4. Queries tk CLI for current status
-    
+    """Loads tickets from `.tickets/*.md` files.
+
+    This loader provides:
+    - Efficient loading of frontmatter + title only (fast for many tickets)
+    - Lazy loading of full body content (on demand)
+    - Graceful handling of malformed tickets (warnings, no crashes)
+
     Example:
-        >>> loader = YamlTicketLoader(Path(".tf"))
+        >>> loader = YamlTicketLoader()
         >>> tickets = loader.load_all()
         >>> for ticket in tickets:
-        ...     print(f"{ticket.id}: {ticket.title} ({ticket.status})")
+        ...     print(f"{ticket.id}: {ticket.title}")
+        ...     # Body is only loaded when accessed:
+        ...     print(ticket.body[:100])
     """
-    
-    def __init__(self, tf_dir: Optional[Path] = None):
+
+    def __init__(self, tickets_dir: Optional[Path] = None):
         """Initialize the loader.
-        
+
         Args:
-            tf_dir: Path to .tf directory. If None, auto-discovers from cwd.
+            tickets_dir: Optional path to tickets directory.
+                        If not provided, resolves to `.tickets` in repo root or cwd.
         """
-        if tf_dir is None:
-            tf_dir = self._find_tf_dir()
-        
-        self.tf_dir = Path(tf_dir)
-        self.plans_dir = self.tf_dir / "plans"
-        self._status_cache: dict[str, str] = {}
-    
-    def _find_tf_dir(self) -> Path:
-        """Find the .tf directory by walking up from cwd."""
+        self.tickets_dir = tickets_dir or self._resolve_tickets_dir()
+        self._tickets: list[Ticket] = []
+        self._by_id: dict[str, Ticket] = {}
+        self._loaded = False
+
+    def _resolve_tickets_dir(self) -> Path:
+        """Resolve the tickets directory from repo root or cwd.
+
+        Returns:
+            Resolved Path to the tickets directory
+        """
+        # Find repo root by looking for .tf directory
         cwd = Path.cwd()
         for parent in [cwd, *cwd.parents]:
             tf_dir = parent / ".tf"
             if tf_dir.is_dir():
-                return tf_dir
-        # Fallback to cwd/.tf
-        return cwd / ".tf"
-    
+                return parent / ".tickets"
+
+        # Fallback to cwd
+        return cwd / ".tickets"
+
     def load_all(self, refresh: bool = False) -> list[Ticket]:
-        """Load tickets from all plan directories.
-        
+        """Load all tickets from the tickets directory.
+
         Args:
-            refresh: If True, clear status cache to re-query tk CLI.
-        
+            refresh: If True, reload tickets even if already loaded.
+
         Returns:
-            List of all tickets from all plans.
-            
+            List of all loaded tickets (metadata only, bodies are lazy-loaded).
+
         Raises:
-            TicketLoadError: If the plans directory doesn't exist.
+            TicketLoadError: If tickets directory cannot be found.
         """
-        # Clear status cache if refresh requested
-        if refresh:
-            self._status_cache.clear()
-        
-        if not self.plans_dir.exists():
-            logger.warning(f"Plans directory not found: {self.plans_dir}")
-            return []
-        
-        all_tickets: list[Ticket] = []
-        
-        for plan_dir in self.plans_dir.iterdir():
-            if not plan_dir.is_dir():
-                continue
-            
-            tickets_file = plan_dir / "tickets.yaml"
-            if not tickets_file.exists():
-                # Explicitly warn about missing tickets.yaml for plan directories
-                logger.warning(f"Skipping plan '{plan_dir.name}': no tickets.yaml found")
-                continue
-            
-            try:
-                plan_tickets = self.load_plan(plan_dir)
-                all_tickets.extend(plan_tickets)
-            except Exception as e:
-                # Explicit warning for malformed/skipped plans (non-fatal)
-                logger.warning(f"Skipping plan '{plan_dir.name}': {e}")
-                continue
-        
-        return all_tickets
-    
-    def load_plan(self, plan_dir: Path) -> list[Ticket]:
-        """Load tickets from a single plan directory.
-        
-        Args:
-            plan_dir: Path to the plan directory containing tickets.yaml
-            
-        Returns:
-            List of tickets from this plan.
-            
-        Raises:
-            TicketLoadError: If tickets.yaml cannot be read or parsed.
-        """
-        tickets_file = plan_dir / "tickets.yaml"
-        
-        if not tickets_file.exists():
-            return []
-        
-        try:
-            with open(tickets_file, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-        except yaml.YAMLError as e:
-            raise TicketLoadError(f"Invalid YAML in {tickets_file}: {e}")
-        except IOError as e:
-            raise TicketLoadError(f"Cannot read {tickets_file}: {e}")
-        
-        # Treat malformed top-level YAML shapes as skippable errors
-        if data is None:
-            raise TicketLoadError(f"Empty or null YAML content in {tickets_file}")
-        if not isinstance(data, dict):
-            raise TicketLoadError(f"Invalid tickets.yaml format: expected dict, got {type(data).__name__}")
-        
-        plan_name = plan_dir.name
-        tickets: list[Ticket] = []
-        
-        # Parse slices
-        slices_data = data.get("slices", [])
-        if isinstance(slices_data, list):
-            for slice_data in slices_data:
-                try:
-                    ticket = self._parse_slice(slice_data, plan_name, plan_dir)
-                    if ticket:
-                        tickets.append(ticket)
-                except Exception as e:
-                    slice_key = slice_data.get("key", "unknown") if isinstance(slice_data, dict) else "unknown"
-                    logger.warning(f"Failed to parse slice {slice_key} in {plan_name}: {e}")
-        
-        # Parse epic if present
-        epic_data = data.get("epic")
-        if isinstance(epic_data, dict):
-            try:
-                epic_ticket = self._parse_epic(epic_data, plan_name, plan_dir)
-                if epic_ticket:
-                    tickets.append(epic_ticket)
-            except Exception as e:
-                logger.warning(f"Failed to parse epic in {plan_name}: {e}")
-        
-        return tickets
-    
-    def _parse_slice(self, data: dict, plan_name: str, plan_dir: Path) -> Optional[Ticket]:
-        """Parse a slice definition into a Ticket.
-        
-        Args:
-            data: Raw slice data from YAML
-            plan_name: Name of the plan directory
-            plan_dir: Full path to plan directory
-            
-        Returns:
-            Ticket object or None if invalid.
-        """
-        if not isinstance(data, dict):
-            return None
-        
-        key = data.get("key")
-        if not key:
-            return None
-        
-        # Get description
-        description = data.get("description", "")
-        if isinstance(description, list):
-            description = "\n".join(str(line) for line in description)
-        
-        # Build ticket
-        # Normalize assignee to string or None
-        raw_assignee = data.get("assignee")
-        assignee = str(raw_assignee) if raw_assignee is not None else None
-        
-        ticket = Ticket(
-            id=str(key),
-            title=str(data.get("title", "Untitled")),
-            body=str(description) if description else "",
-            deps=self._parse_deps(data.get("blocked_by")),
-            tags=self._parse_tags(data.get("tags")),
-            assignee=assignee,
-            priority=data.get("priority"),
-            ticket_type=data.get("type", "feature"),
-            plan_name=plan_name,
-            plan_dir=str(plan_dir),
-            external_ref=data.get("external_ref"),
-        )
-        
-        # Refresh status from tk CLI
-        ticket.status = self.refresh_status(ticket.id)
-        
-        return ticket
-    
-    def _parse_epic(self, data: dict, plan_name: str, plan_dir: Path) -> Optional[Ticket]:
-        """Parse an epic definition into a Ticket.
-        
-        Args:
-            data: Raw epic data from YAML
-            plan_name: Name of the plan directory
-            plan_dir: Full path to plan directory
-            
-        Returns:
-            Ticket object or None if invalid.
-        """
-        if not isinstance(data, dict):
-            return None
-        
-        title = data.get("title")
-        if not title:
-            return None
-        
-        # Get description
-        description = data.get("description", "")
-        if isinstance(description, list):
-            description = "\n".join(str(line) for line in description)
-        
-        # Use plan name as epic ID
-        epic_id = f"epic-{plan_name}"
-        
-        # Normalize assignee to string or None
-        raw_assignee = data.get("assignee")
-        assignee = str(raw_assignee) if raw_assignee is not None else None
-        
-        ticket = Ticket(
-            id=epic_id,
-            title=str(title),
-            body=str(description) if description else "",
-            deps=self._parse_deps(data.get("blocked_by")),
-            tags=self._parse_tags(data.get("tags")),
-            assignee=assignee,
-            priority=data.get("priority"),
-            ticket_type="epic",
-            plan_name=plan_name,
-            plan_dir=str(plan_dir),
-            external_ref=data.get("external_ref"),
-        )
-        
-        # Refresh status from tk CLI
-        ticket.status = self.refresh_status(ticket.id)
-        
-        return ticket
-    
-    def _parse_deps(self, blocked_by: Optional[list | str]) -> list[str]:
-        """Parse blocked_by field into list of dependency IDs."""
-        if blocked_by is None:
-            return []
-        if isinstance(blocked_by, str):
-            return [blocked_by] if blocked_by else []
-        if isinstance(blocked_by, list):
-            return [str(d) for d in blocked_by if d]
-        return []
-    
-    def _parse_tags(self, tags: Optional[list | str]) -> list[str]:
-        """Parse tags field into list of tag strings."""
-        if tags is None:
-            return []
-        if isinstance(tags, str):
-            return [tags] if tags else []
-        if isinstance(tags, list):
-            return [str(t) for t in tags if t]
-        return []
-    
-    def refresh_status(self, ticket_id: str) -> str:
-        """Query tk CLI for current ticket status.
-        
-        Uses caching to avoid repeated queries for the same ticket
-        in a single load operation.
-        
-        Args:
-            ticket_id: The ticket ID to query
-            
-        Returns:
-            Status string ("open", "in_progress", "closed", etc.)
-            Returns "open" if the query fails.
-        """
-        if ticket_id in self._status_cache:
-            return self._status_cache[ticket_id]
-        
-        status = self._query_tk_status(ticket_id)
-        self._status_cache[ticket_id] = status
-        return status
-    
-    def _query_tk_status(self, ticket_id: str) -> str:
-        """Execute tk CLI to get ticket status.
-        
-        Args:
-            ticket_id: The ticket ID to query
-            
-        Returns:
-            Status string, defaults to "open" on any failure.
-        """
-        try:
-            result = subprocess.run(
-                ["tk", "show", ticket_id, "--format", "json"],
-                capture_output=True,
-                text=True,
-                timeout=5,
+        if self._loaded and not refresh:
+            return self._tickets.copy()
+
+        if not self.tickets_dir.exists():
+            raise TicketLoadError(
+                f"Tickets directory not found: {self.tickets_dir}\n"
+                "Run 'tk init' to create it."
             )
-            
-            if result.returncode != 0:
-                logger.debug(f"tk show failed for {ticket_id}: {result.stderr}")
-                return "open"
-            
-            data = json.loads(result.stdout)
-            
-            # Handle different JSON structures
-            # Try "status" field directly, or nested in "ticket" or "data"
-            status = data.get("status")
-            if status is None and "ticket" in data:
-                status = data["ticket"].get("status")
-            if status is None and "data" in data:
-                status = data["data"].get("status")
-            
-            return str(status) if status else "open"
-            
-        except subprocess.TimeoutExpired:
-            logger.warning(f"tk show timed out for {ticket_id}")
-            return "open"
-        except json.JSONDecodeError as e:
-            logger.warning(f"Invalid JSON from tk show {ticket_id}: {e}")
-            return "open"
-        except FileNotFoundError:
-            # tk CLI not installed
-            logger.debug("tk CLI not found, defaulting all statuses to 'open'")
-            return "open"
-        except Exception as e:
-            logger.debug(f"Error querying tk for {ticket_id}: {e}")
-            return "open"
+
+        self._tickets = []
+        self._by_id = {}
+
+        # Find all .md files in tickets directory
+        ticket_files = sorted(self.tickets_dir.glob("*.md"))
+
+        for file_path in ticket_files:
+            try:
+                ticket = self._parse_ticket(file_path)
+                if ticket:
+                    self._tickets.append(ticket)
+                    self._by_id[ticket.id] = ticket
+            except Exception as e:
+                logger.warning(f"Skipping malformed ticket {file_path.name}: {e}")
+                continue
+
+        self._loaded = True
+        return self._tickets.copy()
+
+    def _parse_ticket(self, file_path: Path) -> Optional[Ticket]:
+        """Parse a single ticket file.
+
+        Args:
+            file_path: Path to the ticket markdown file
+
+        Returns:
+            Parsed Ticket or None if parsing fails
+        """
+        content = file_path.read_text(encoding="utf-8")
+
+        # Parse frontmatter
+        frontmatter = self._parse_frontmatter(content)
+        if frontmatter is None:
+            logger.warning(f"No frontmatter found in {file_path.name}")
+            return None
+
+        # Extract title from markdown body
+        title = self._extract_title(content)
+
+        # Build ticket object
+        ticket = Ticket(
+            id=frontmatter.get("id", file_path.stem),
+            status=frontmatter.get("status", "open"),
+            title=title,
+            file_path=file_path,
+            deps=frontmatter.get("deps", []),
+            tags=frontmatter.get("tags", []),
+            assignee=frontmatter.get("assignee"),
+            external_ref=frontmatter.get("external-ref") or frontmatter.get("external_ref"),
+            priority=frontmatter.get("priority"),
+            ticket_type=frontmatter.get("type"),
+            created=frontmatter.get("created"),
+            links=frontmatter.get("links", []),
+            # For backward compatibility
+            plan_name="",
+            plan_dir=str(file_path.parent),
+        )
+
+        return ticket
+
+    def _parse_frontmatter(self, content: str) -> Optional[dict]:
+        """Parse YAML frontmatter from content.
+
+        Args:
+            content: The markdown file content
+
+        Returns:
+            Dictionary of frontmatter fields or None if no frontmatter
+        """
+        match = FRONTMATTER_PATTERN.match(content)
+        if not match:
+            return None
+
+        frontmatter_text = match.group(1)
+
+        try:
+            return yaml.safe_load(frontmatter_text) or {}
+        except yaml.YAMLError as e:
+            logger.warning(f"YAML parsing failed: {e}")
+            return None
+
+    def _extract_title(self, content: str) -> str:
+        """Extract the title from markdown content.
+
+        Args:
+            content: The markdown file content
+
+        Returns:
+            The title (first # heading) or empty string if not found
+        """
+        # Remove frontmatter first
+        match = FRONTMATTER_PATTERN.match(content)
+        if match:
+            body = match.group(2)
+        else:
+            body = content
+
+        # Find first # heading
+        title_match = TITLE_PATTERN.search(body)
+        if title_match:
+            return title_match.group(1).strip()
+
+        return ""
+
+    def get_by_id(self, ticket_id: str) -> Optional[Ticket]:
+        """Get a ticket by its ID.
+
+        Args:
+            ticket_id: The ticket ID to look up
+
+        Returns:
+            The ticket if found, None otherwise
+
+        Raises:
+            TicketLoadError: If tickets haven't been loaded
+        """
+        if not self._loaded:
+            raise TicketLoadError("Tickets not loaded. Call load_all() first.")
+        return self._by_id.get(ticket_id)
+
+    def get_by_status(self, status: str) -> list[Ticket]:
+        """Get tickets filtered by status.
+
+        Args:
+            status: Status to filter by (e.g., "open", "closed")
+
+        Returns:
+            List of tickets with matching status
+
+        Raises:
+            TicketLoadError: If tickets haven't been loaded
+        """
+        if not self._loaded:
+            raise TicketLoadError("Tickets not loaded. Call load_all() first.")
+        return [t for t in self._tickets if t.status == status]
+
+    def search(self, query: str) -> list[Ticket]:
+        """Search tickets by query string in title, id, or tags.
+
+        Args:
+            query: Search string (case-insensitive substring match)
+
+        Returns:
+            List of matching tickets
+
+        Raises:
+            TicketLoadError: If tickets haven't been loaded
+        """
+        if not self._loaded:
+            raise TicketLoadError("Tickets not loaded. Call load_all() first.")
+
+        query_lower = query.lower()
+        results = []
+
+        for ticket in self._tickets:
+            # Search in ID
+            if query_lower in ticket.id.lower():
+                results.append(ticket)
+                continue
+            # Search in title
+            if query_lower in ticket.title.lower():
+                results.append(ticket)
+                continue
+            # Search in tags
+            if any(query_lower in tag.lower() for tag in ticket.tags):
+                results.append(ticket)
+                continue
+
+        return results
+
+    @property
+    def count_by_status(self) -> dict[str, int]:
+        """Get count of tickets by status.
+
+        Returns:
+            Dictionary mapping status to count
+        """
+        if not self._loaded:
+            return {}
+
+        counts: dict[str, int] = {}
+        for ticket in self._tickets:
+            counts[ticket.status] = counts.get(ticket.status, 0) + 1
+        return counts

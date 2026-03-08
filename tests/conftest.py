@@ -40,21 +40,15 @@ def sample_project_tf_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def sample_tf_dir(sample_project_tf_dir: Path) -> Path:
-    """Alias for sample_project_tf_dir for backward compatibility."""
-    return sample_project_tf_dir
-
-
-@pytest.fixture
-def sample_knowledge_dir(sample_tf_dir: Path) -> Path:
-    """Return the path to the sample knowledge directory."""
-    return sample_tf_dir / "knowledge"
-
-
-@pytest.fixture
-def sample_plan_dir(sample_tf_dir: Path) -> Path:
+def sample_plan_dir(sample_project_tf_dir: Path) -> Path:
     """Return the path to the sample plan directory."""
-    return sample_tf_dir / "plans" / "sample-plan"
+    return sample_project_tf_dir / "plans" / "sample-plan"
+
+
+@pytest.fixture
+def sample_tickets_dir(sample_project_fixture_dir: Path) -> Path:
+    """Return the path to the sample tickets directory."""
+    return sample_project_fixture_dir / ".tickets"
 
 
 @pytest.fixture
@@ -125,93 +119,3 @@ def create_plan_dir(tmp_path: Path):
         return plan_dir
     
     return _create
-
-
-@pytest.fixture
-def fixture_ticket_ids() -> dict[str, dict]:
-    """Return expected ticket IDs and properties from the sample fixture.
-    
-    This provides a stable reference for tests to assert against without
-    hardcoding values multiple times.
-    """
-    return {
-        "epic-sample-plan": {
-            "title": "Sample Epic for Testing",
-            "type": "epic",
-            "tags": ["testing", "ui", "epic-tag"],
-            "assignee": "epic-owner",
-        },
-        "S1": {
-            "title": "Ready slice - no dependencies",
-            "type": "feature",
-            "priority": 1,
-            "deps": [],
-        },
-        "S2": {
-            "title": "Blocked slice - depends on S1",
-            "type": "feature",
-            "priority": 2,
-            "deps": ["S1"],
-        },
-        "S3": {
-            "title": "In Progress slice",
-            "type": "chore",
-            "priority": 1,
-            "assignee": "testuser",
-        },
-        "S4": {
-            "title": "Closed slice",
-            "type": "feature",
-            "priority": 3,
-            "external_ref": "github.com/org/repo/issues/42",
-        },
-        "S5": {
-            "title": "Multiple dependencies",
-            "type": "feature",
-            "priority": 2,
-            "deps": ["S1", "S2"],
-            "assignee": "developer2",
-        },
-        "S6": {
-            "title": "String dependency test",
-            "type": "bug",
-            "priority": 1,
-            "deps": ["S1"],  # String converted to list
-        },
-        "S7": {
-            "title": "String tag test",
-            "type": "docs",
-            "priority": 3,
-            "tags": ["single-tag"],  # String converted to list
-        },
-    }
-
-
-@pytest.fixture
-def fixture_topic_ids() -> dict[str, dict]:
-    """Return expected topic IDs and properties from the sample fixture.
-    
-    This provides a stable reference for tests to assert against.
-    """
-    return {
-        "seed-sample": {
-            "title": "Seed Topic - Project Scaffolding",
-            "type": "seed",
-            "keywords": ["scaffolding", "project", "setup"],
-        },
-        "plan-sample": {
-            "title": "Plan Topic - Implementation Workflow",
-            "type": "plan",
-            "keywords": ["planning", "workflow", "implementation"],
-        },
-        "spike-sample": {
-            "title": "Spike Topic - Technical Investigation",
-            "type": "spike",
-            "keywords": ["spike", "research", "investigation"],
-        },
-        "baseline-testing": {
-            "title": "Baseline Testing Patterns",
-            "type": "baseline",
-            "keywords": ["testing", "pytest", "fixtures"],
-        },
-    }

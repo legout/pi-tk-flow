@@ -380,47 +380,89 @@ Interactive sessions are tracked in `.subagent-runs/<ticket>/session.json`:
 - Otherwise they should use `agentScope: "user"`.
 - Use `"both"` only when intentionally allowing project agents to override user agents.
 
-## UI (Optional Terminal/Web Interface)
+## UI (Standalone CLI)
 
-pi-tf-flow includes an optional Textual-based TUI for browsing tickets and knowledge topics.
+pi-tf-flow includes an optional standalone Textual TUI for browsing tickets and plans.
+It is **not** exposed as a pi command anymore.
 
 ### Prerequisites
 
 - Python 3.10+
-- Optional UI dependencies: `textual>=0.47.0`, `pyyaml>=6.0`
+- UI dependencies: `textual>=0.47.0`, `pyyaml>=6.0`
+- `uv` recommended
 
-### Installation
+### Install globally with `uv tool install`
+
+From a published package or git source, install the standalone CLI:
 
 ```bash
-# Install the Python package with UI dependencies
-cd python
+uv tool install --from 'git+https://github.com/legout/pi-tk-flow[ui]' tf-ui
+```
+
+Then run:
+
+```bash
+tf-ui
+```
+
+### Install from a local checkout with `uv tool install`
+
+From the repository root:
+
+```bash
+uv tool install --from '.[ui]' tf-ui
+```
+
+Then run:
+
+```bash
+tf-ui
+```
+
+### Run without installing via `uvx`
+
+From the repository root:
+
+```bash
+uvx --from '.[ui]' tf-ui
+```
+
+From git directly:
+
+```bash
+uvx --from 'git+https://github.com/legout/pi-tk-flow[ui]' tf-ui
+```
+
+### Alternative local dev install
+
+```bash
 pip install -e '.[ui]'
-# or with uv:
-uv pip install -e '.[ui]'
+tf-ui
 ```
 
-### Terminal Mode
+### Web Mode
 
-Launch the interactive terminal UI:
+Print the browser serve command:
 
 ```bash
-# Via pi extension (recommended)
-/tf ui
-
-# Direct Python execution
-python -m pi_tk_flow_ui
-
-# From project root
-python -m pi_tk_flow_ui
+tf-ui --web
 ```
 
-**Keyboard Shortcuts:**
+Example serve command:
+
+```bash
+textual serve "tf-ui" --host 127.0.0.1 --port 8000
+```
+
+⚠️ **Security Note**: When binding to `0.0.0.0`, ensure proper firewall rules are in place. The UI has no authentication.
+
+### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
 | `q` | Quit |
 | `r` | Refresh current tab |
-| `Tab` | Switch between tabs (Tickets/Topics) |
+| `Tab` | Move focus / switch tabs |
 | `↑/↓` | Navigate lists |
 | `Enter` | Select item |
 | `o` | Open selected item in pager/editor |
@@ -428,52 +470,33 @@ python -m pi_tk_flow_ui
 | `1` | Open PRD (01-prd.md) |
 | `2` | Open Spec (02-spec.md) |
 | `3` | Open Plan (03-implementation-plan.md) |
-| `4` | Open Progress (04-progress.md) |
+| `4` | Open Ticket Breakdown (04-ticket-breakdown.md) |
 | `?` | Show help |
 
-**Features:**
+### Features
 - **Tickets Tab**: Kanban board with 4 columns (Ready, Blocked, In Progress, Closed)
   - Search filter (title, description)
   - Tag filter
   - Assignee filter
-  - Live status refresh from `tk` CLI
   - Ticket detail panel with dependencies
-- **Topics Tab**: Knowledge base browser
-  - Grouped by type (plan, spike, seed, baseline)
-  - Search functionality
-  - Topic content preview
-
-### Web Mode
-
-Serve the UI in a web browser (requires `textual` CLI):
-
-```bash
-# Get the serve command
-/tf ui --web
-
-# Run the printed command (customize host/port as needed)
-textual serve "python -m pi_tk_flow_ui" --host 127.0.0.1 --port 8000
-
-# Bind to all interfaces (allows external access)
-textual serve "python -m pi_tk_flow_ui" --host 0.0.0.0 --port 8000
-```
-
-⚠️ **Security Note**: When binding to `0.0.0.0`, ensure proper firewall rules are in place. The UI has no authentication.
+- **Plans Tab**: Plan browser for `.tf/plans/*`
+  - Search by title, topic, plan ID, or date
+  - Document availability summary
+  - Quick-open PRD/spec/implementation plan/ticket breakdown
+  - Legacy compatibility for older `03-plan.md` / `04-progress.md` plan layouts
 
 ### Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| `Error: UI dependencies not installed` | Run `pip install -e './python[ui]'` |
-| `tk CLI not found` | Status defaults to "open"; install `tk` for live status |
-| `No tickets found` | Create a plan with `/tf-plan` first |
-| `No topics found` | Add topic directories and markdown files under `.tf/knowledge/topics/<topic-slug>/` |
+| `Error: UI dependencies not installed` | Run `uv tool install --from '.[ui]' tf-ui` or `uvx --from '.[ui]' tf-ui` |
+| `No tickets found` | Create tickets under `.tickets/` |
+| `No plans found` | Create a plan with `/tf-plan` first |
 | Editor doesn't open | Set `$EDITOR` or `$PAGER` environment variable |
 | Colors look wrong | Ensure your terminal supports 256 colors |
 
 ### Environment Variables
 
-- `TF_KNOWLEDGE_DIR`: Override knowledge directory path
 - `EDITOR`: Preferred editor for opening files
 - `PAGER`: Preferred pager for viewing files
 

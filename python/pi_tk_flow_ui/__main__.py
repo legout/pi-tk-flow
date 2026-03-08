@@ -1,7 +1,4 @@
-"""Entry point for pi-tk-flow-ui.
-
-Supports `python -m pi_tk_flow_ui` for launching the TUI.
-"""
+"""Standalone entry point for the tf-ui terminal app."""
 
 from __future__ import annotations
 
@@ -9,14 +6,7 @@ import sys
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Launch the Ticketflow TUI or web UI.
-    
-    Args:
-        argv: Command line arguments
-        
-    Returns:
-        Exit code (0 for success, 1 for error)
-    """
+    """Launch the standalone Ticketflow TUI or print web serve instructions."""
     import argparse
     
     parser = argparse.ArgumentParser(
@@ -45,13 +35,13 @@ def main(argv: list[str] | None = None) -> int:
         help="Enable debug logging"
     )
 
-    args = parser.parse_args(argv or sys.argv[1:])
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     # If --web flag is set, print the textual serve command
     if args.web:
         print("\n🌐 To serve the Ticketflow UI in a web browser, run:")
         print("")
-        print(f'   textual serve "python -m pi_tk_flow_ui" --host {args.host} --port {args.port}')
+        print(f'   textual serve "tf-ui" --host {args.host} --port {args.port}')
         print("")
         print("⚠️  WARNING: Security considerations for web serving:")
         print("   • The default host (127.0.0.1) only allows local access")
@@ -81,18 +71,11 @@ def main(argv: list[str] | None = None) -> int:
         for dep in missing_deps:
             print(f"  - {dep}", file=sys.stderr)
         print("", file=sys.stderr)
-        print("Install with:", file=sys.stderr)
-        print("  pip install -e ./python[ui]", file=sys.stderr)
-        print("  # or", file=sys.stderr)
-        print("  uv pip install -e ./python[ui]", file=sys.stderr)
-        return 1
-    
-    # Now safe to import Textual and the app
-    try:
-        from textual.app import App
-    except ImportError as e:
-        print(f"Error: Failed to import Textual: {e}", file=sys.stderr)
-        print("Please reinstall the UI dependencies.", file=sys.stderr)
+        print("Install with one of:", file=sys.stderr)
+        print("  uv tool install --from '.[ui]' tf-ui", file=sys.stderr)
+        print("  uvx --from '.[ui]' tf-ui", file=sys.stderr)
+        print("  # or for editable local development", file=sys.stderr)
+        print("  pip install -e '.[ui]'", file=sys.stderr)
         return 1
     
     # Import and run the app

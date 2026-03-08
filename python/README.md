@@ -1,15 +1,45 @@
-# pi-tf-flow-ui
+# pi-tk-flow-ui
 
-Textual TUI for pi-tf-flow ticket management.
+Standalone Textual TUI for browsing pi-tk-flow tickets and plans.
 
-## Installation
+## Install globally with uv
+
+From a git source:
+
+```bash
+uv tool install --from 'git+https://github.com/legout/pi-tk-flow[ui]' tf-ui
+```
+
+From a local checkout:
+
+```bash
+uv tool install --from '.[ui]' tf-ui
+```
+
+## Run without installing
+
+From a local checkout:
+
+```bash
+uvx --from '.[ui]' tf-ui
+```
+
+From git directly:
+
+```bash
+uvx --from 'git+https://github.com/legout/pi-tk-flow[ui]' tf-ui
+```
+
+## Local development install
 
 ```bash
 pip install -e '.[ui]'
+tf-ui
 ```
 
 ## Usage
 
 ```bash
-python -m pi_tk_flow_ui
+tf-ui
+tf-ui --web
 ```

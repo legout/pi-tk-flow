@@ -1,6 +1,6 @@
 """Textual TUI for pi-tk-flow.
 
-Provides a Kanban-style interface for viewing tickets and browsing knowledge topics.
+Provides a Kanban-style interface for viewing tickets and browsing plans.
 """
 
 from __future__ import annotations
@@ -10,14 +10,11 @@ import os
 import shlex
 import shutil
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-# Import ticket loading and board classification
-from pi_tk_flow_ui.ticket_loader import YamlTicketLoader
 from pi_tk_flow_ui.board_classifier import BoardClassifier, BoardColumn, ClassifiedTicket, BoardView
-from pi_tk_flow_ui.topic_scanner import Topic, TopicScanner
+from pi_tk_flow_ui.plan_scanner import Plan, PlanScanner
 
 # Textual imports
 from textual.app import App, ComposeResult
@@ -31,12 +28,65 @@ from textual.binding import Binding
 
 logger = logging.getLogger(__name__)
 
+PLAN_DOC_OPEN_ORDER = (
+    "03-implementation-plan.md",
+    "01-prd.md",
+    "02-spec.md",
+    "04-ticket-breakdown.md",
+    "03-plan.md",
+    "04-progress.md",
+)
+TICKET_BREAKDOWN_FILES = ("04-ticket-breakdown.md", "04-progress.md")
 
-@dataclass
-class TopicDoc:
-    """Represents a topic document with path and existence info."""
-    path: str
-    exists: bool
+
+def first_existing_file(dir_path: Path, candidates: tuple[str, ...]) -> Optional[Path]:
+    """Return the first existing candidate file in a directory."""
+    for filename in candidates:
+        candidate = dir_path / filename
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def open_file(widget: Static, file_path: Path) -> None:
+    """Open a file using EDITOR/PAGER without invoking a shell."""
+    if not file_path.exists():
+        widget.notify(f"File not found: {file_path}", severity="error")
+        return
+
+    editor = os.environ.get("EDITOR", "").strip()
+    pager = os.environ.get("PAGER", "").strip()
+
+    cmd_parts = None
+    for configured_cmd in (editor, pager):
+        if not configured_cmd:
+            continue
+        try:
+            cmd_parts = shlex.split(configured_cmd) + [str(file_path)]
+        except ValueError:
+            cmd_parts = [configured_cmd, str(file_path)]
+        break
+
+    if not cmd_parts:
+        for fallback in ("less", "more", "cat"):
+            if shutil.which(fallback):
+                cmd_parts = [fallback, str(file_path)]
+                break
+
+    if not cmd_parts:
+        widget.notify("No pager or editor found. Set $PAGER or $EDITOR.", severity="error")
+        return
+
+    try:
+        with widget.app.suspend():
+            result = subprocess.run(cmd_parts, check=False)
+            exit_code = result.returncode
+    except Exception as e:
+        widget.notify(f"Failed to suspend terminal: {e}", severity="error")
+        return
+
+    if exit_code != 0:
+        widget.notify(f"Command failed (exit code: {exit_code})", severity="error")
 
 
 class DataListItem(ListItem):
@@ -46,205 +96,235 @@ class DataListItem(ListItem):
         self.data = data
 
 
-class TopicBrowser(Static):
-    """Widget for browsing knowledge topics."""
+class PlanBrowser(Static):
+    """Widget for browsing plan directories."""
     
-    topics: reactive[list[Topic]] = reactive([])
-    selected_topic: reactive[Optional[Topic]] = reactive(None)
+    plans: reactive[list[Plan]] = reactive([])
+    selected_plan: reactive[Optional[Plan]] = reactive(None)
     
     def compose(self) -> ComposeResult:
-        """Compose the topic browser layout."""
+        """Compose the plan browser layout."""
         with Horizontal():
-            # Left sidebar: topic list
-            with Vertical(id="topic-sidebar"):
-                yield Input(placeholder="Search topics...", id="topic-search")
-                yield ListView(id="topic-list")
+            # Left sidebar: plan list
+            with Vertical(id="plan-sidebar"):
+                yield Input(placeholder="Search plans...", id="plan-search")
+                yield ListView(id="plan-list")
             
-            # Right panel: topic details
-            with Vertical(id="topic-detail"):
-                yield Static("Select a topic to view details", id="topic-detail-content")
+            # Right panel: plan details
+            with Vertical(id="plan-detail"):
+                yield Static("Select a plan to view details", id="plan-detail-content")
     
     def on_mount(self) -> None:
-        """Load topics when mounted."""
-        self.load_topics()
+        """Load plans when mounted."""
+        self.load_plans()
     
-    def load_topics(self) -> None:
-        """Load topics from index."""
+    def load_plans(self) -> None:
+        """Load plans from .tf/plans/."""
         try:
-            scanner = TopicScanner()
-            self.topics = scanner.scan()
-            self.update_topic_list()
+            scanner = PlanScanner()
+            self.plans = scanner.scan()
+            self.update_plan_list()
         except Exception as e:
-            self.query_one("#topic-list", ListView).clear()
-            self.query_one("#topic-detail-content", Static).update(
-                f"[red]Error loading topics:[/red]\n{e}"
+            self.query_one("#plan-list", ListView).clear()
+            self.query_one("#plan-detail-content", Static).update(
+                f"[red]Error loading plans:[/red]\n{e}"
             )
     
-    def update_topic_list(self) -> None:
-        """Update the topic list display."""
-        list_view = self.query_one("#topic-list", ListView)
+    def update_plan_list(self) -> None:
+        """Update the plan list display."""
+        list_view = self.query_one("#plan-list", ListView)
         list_view.clear()
         
-        if not self.topics:
+        if not self.plans:
             list_view.append(ListItem(
-                Label("[dim]No topics found in .tf/knowledge/topics/[/dim]"),
+                Label("[dim]No plans found in .tf/plans/[/dim]"),
                 disabled=True
             ))
             return
         
-        # Group by type
-        by_type: dict[str, list[Topic]] = {}
-        for topic in self.topics:
-            by_type.setdefault(topic.topic_type, []).append(topic)
+        # Group by year/month from date
+        by_period: dict[str, list[Plan]] = {}
+        for plan in self.plans:
+            if plan.plan_date:
+                period = plan.plan_date[:7]  # YYYY-MM
+            else:
+                period = "Unknown"
+            by_period.setdefault(period, []).append(plan)
         
-        # Add items grouped by type (in priority order)
-        type_order = ["plan", "spike", "seed", "baseline", "other"]
-        for type_name in type_order:
-            if type_name in by_type and by_type[type_name]:
-                # Add type header
-                list_view.append(ListItem(
-                    Label(f"[b]{type_name.upper()}[/b]"),
-                    disabled=True
+        # Add items grouped by period (sorted newest first)
+        for period in sorted(by_period.keys(), reverse=True):
+            plans_in_period = by_period[period]
+            # Add period header
+            display_period = period if period != "Unknown" else "No Date"
+            list_view.append(ListItem(
+                Label(f"[b]{display_period}[/b]"),
+                disabled=True
+            ))
+            # Add plans
+            for plan in plans_in_period:
+                display_title = plan.title[:40] + "..." if len(plan.title) > 40 else plan.title
+                status_indicator = f"[{plan.status}] " if plan.status != "Unknown" else ""
+                list_view.append(DataListItem(
+                    Label(f"  {status_indicator}{display_title}"),
+                    data=plan
                 ))
-                # Add topics (sorted by title, case-insensitive)
-                for topic in sorted(by_type[type_name], key=lambda t: t.title.lower()):
-                    list_view.append(DataListItem(
-                        Label(f"  {topic.title}"),
-                        data=topic
-                    ))
     
     def on_list_view_selected(self, event: ListView.Selected) -> None:
-        """Handle topic selection."""
+        """Handle plan selection."""
         item = event.item
         if hasattr(item, "data") and item.data:
-            self.selected_topic = item.data
+            self.selected_plan = item.data
             self.update_detail_view()
     
     def on_input_changed(self, event: Input.Changed) -> None:
         """Handle search input."""
         if not event.value:
-            self.update_topic_list()
+            self.update_plan_list()
             return
         
         try:
             query = event.value.lower()
             results = [
-                t for t in self.topics
-                if query in t.title.lower()
-                or query in t.topic_type.lower()
-                or any(query in kw.lower() for kw in t.keywords)
+                p for p in self.plans
+                if query in p.title.lower()
+                or query in p.plan_topic.lower()
+                or query in p.id.lower()
+                or query in p.plan_date.lower()
             ]
             
-            list_view = self.query_one("#topic-list", ListView)
+            list_view = self.query_one("#plan-list", ListView)
             list_view.clear()
             
             if not results:
                 list_view.append(ListItem(
-                    Label("[dim]No matching topics[/dim]"),
+                    Label("[dim]No matching plans[/dim]"),
                     disabled=True
                 ))
                 return
             
-            for topic in sorted(results, key=lambda t: t.title.lower()):
+            for plan in sorted(results, key=lambda p: (p.plan_date, p.plan_topic), reverse=True):
+                display_title = plan.title[:40] + "..." if len(plan.title) > 40 else plan.title
+                status_indicator = f"[{plan.status}] " if plan.status != "Unknown" else ""
                 list_view.append(DataListItem(
-                    Label(f"[{topic.topic_type}] {topic.title}"),
-                    data=topic
+                    Label(f"{status_indicator}{display_title}"),
+                    data=plan
                 ))
         except Exception:
             pass  # Ignore search errors
     
     def update_detail_view(self) -> None:
-        """Update the detail view for selected topic."""
-        if not self.selected_topic:
+        """Update the detail view for selected plan."""
+        if not self.selected_plan:
             return
         
-        topic = self.selected_topic
-        content = self.query_one("#topic-detail-content", Static)
-        
-        # Read topic content
-        try:
-            if topic.file_path.exists():
-                file_content = topic.file_path.read_text(encoding="utf-8")
-            else:
-                file_content = "[dim]Topic file not found[/dim]"
-        except Exception as e:
-            file_content = f"[red]Error reading topic: {e}[/red]"
+        plan = self.selected_plan
+        content = self.query_one("#plan-detail-content", Static)
         
         # Build detail text
         lines = [
-            f"[b]{topic.title}[/b]",
+            f"[b]{plan.title}[/b]",
             f"",
-            f"ID: {topic.id}",
-            f"Type: {topic.topic_type}",
+            f"ID: {plan.id}",
+            f"Date: {plan.plan_date or 'N/A'}",
+            f"Topic: {plan.plan_topic}",
+            f"Status: {plan.status}",
+            "",
+            "[b]Documents:[/b]",
         ]
         
-        if topic.keywords:
-            lines.append(f"Keywords: {', '.join(topic.keywords)}")
+        if plan.prd_path:
+            lines.append(f"  [green]✓[/green] PRD (01-prd.md)")
+        else:
+            lines.append(f"  [dim]✗ PRD[/dim]")
+        
+        if plan.spec_path:
+            lines.append(f"  [green]✓[/green] Spec (02-spec.md)")
+        else:
+            lines.append(f"  [dim]✗ Spec[/dim]")
+        
+        if plan.impl_plan_path:
+            lines.append(f"  [green]✓[/green] Implementation Plan ({plan.impl_plan_path.name})")
+        else:
+            lines.append(f"  [dim]✗ Implementation Plan[/dim]")
+        
+        if plan.ticket_breakdown_path:
+            label = "Ticket Breakdown" if plan.ticket_breakdown_path.name == "04-ticket-breakdown.md" else "Legacy Progress"
+            lines.append(f"  [green]✓[/green] {label} ({plan.ticket_breakdown_path.name})")
+        else:
+            lines.append(f"  [dim]✗ Ticket Breakdown[/dim]")
         
         lines.append("")
-        lines.append(f"File: {topic.file_path.name}")
-        lines.append("")
-        lines.append("[b]Content:[/b]")
-        lines.append(file_content[:5000])  # Limit content length
-        if len(file_content) > 5000:
-            lines.append("\n[dim]... (truncated)[/dim]")
+        lines.append(f"Path: {plan.dir_path}")
         
         content.update("\n".join(lines))
     
     def action_open_doc(self) -> None:
-        """Open the selected topic in pager/editor."""
-        if not self.selected_topic:
-            self.notify("No topic selected", severity="warning")
+        """Open the selected plan's PRD in pager/editor."""
+        if not self.selected_plan:
+            self.notify("No plan selected", severity="warning")
             return
         
-        topic = self.selected_topic
-        self._open_file(topic.file_path)
+        plan = self.selected_plan
+        # Open PRD first, or implementation plan as fallback
+        file_to_open = plan.prd_path or plan.impl_plan_path or plan.spec_path
+        
+        if not file_to_open:
+            self.notify("No documents found for this plan", severity="warning")
+            return
+        
+        self._open_file(file_to_open)
+    
+    def action_open_doc_1(self) -> None:
+        """Open PRD document (01-prd.md) for selected plan."""
+        if not self.selected_plan:
+            self.notify("No plan selected", severity="warning")
+            return
+        
+        if not self.selected_plan.prd_path:
+            self.notify("PRD not found for this plan", severity="warning")
+            return
+        
+        self._open_file(self.selected_plan.prd_path)
+    
+    def action_open_doc_2(self) -> None:
+        """Open Spec document (02-spec.md) for selected plan."""
+        if not self.selected_plan:
+            self.notify("No plan selected", severity="warning")
+            return
+        
+        if not self.selected_plan.spec_path:
+            self.notify("Spec not found for this plan", severity="warning")
+            return
+        
+        self._open_file(self.selected_plan.spec_path)
+    
+    def action_open_doc_3(self) -> None:
+        """Open Implementation Plan document for selected plan."""
+        if not self.selected_plan:
+            self.notify("No plan selected", severity="warning")
+            return
+        
+        if not self.selected_plan.impl_plan_path:
+            self.notify("Implementation Plan not found for this plan", severity="warning")
+            return
+        
+        self._open_file(self.selected_plan.impl_plan_path)
+    
+    def action_open_doc_4(self) -> None:
+        """Open ticket breakdown document for selected plan."""
+        if not self.selected_plan:
+            self.notify("No plan selected", severity="warning")
+            return
+        
+        if not self.selected_plan.ticket_breakdown_path:
+            self.notify("Ticket breakdown not found for this plan", severity="warning")
+            return
+        
+        self._open_file(self.selected_plan.ticket_breakdown_path)
     
     def _open_file(self, file_path: Path) -> None:
-        """Open a file using PAGER or EDITOR (safe implementation without shell)."""
-        if not file_path.exists():
-            self.notify(f"File not found: {file_path}", severity="error")
-            return
-        
-        # Determine command to use
-        editor = os.environ.get("EDITOR", "").strip()
-        pager = os.environ.get("PAGER", "").strip()
-        
-        cmd_parts = None
-        if editor:
-            # Parse editor command (may include flags like "code -w")
-            try:
-                cmd_parts = shlex.split(editor) + [str(file_path)]
-            except ValueError:
-                # Fallback if shlex fails
-                cmd_parts = [editor, str(file_path)]
-        elif pager:
-            try:
-                cmd_parts = shlex.split(pager) + [str(file_path)]
-            except ValueError:
-                cmd_parts = [pager, str(file_path)]
-        else:
-            # Find fallback pager without shell
-            for fallback in ["less", "more", "cat"]:
-                if shutil.which(fallback):
-                    cmd_parts = [fallback, str(file_path)]
-                    break
-        
-        if not cmd_parts:
-            self.notify("No pager or editor found. Set $PAGER or $EDITOR.", severity="error")
-            return
-        
-        # Run the command with terminal suspend (no shell)
-        try:
-            with self.app.suspend():
-                result = subprocess.run(cmd_parts, check=False)
-                exit_code = result.returncode
-        except Exception as e:
-            self.notify(f"Failed to suspend terminal: {e}", severity="error")
-            return
-        
-        if exit_code != 0:
-            self.notify(f"Command failed (exit code: {exit_code})", severity="error")
+        """Open a file using EDITOR/PAGER."""
+        open_file(self, file_path)
 
 
 class TicketBoard(Static):
@@ -255,7 +335,6 @@ class TicketBoard(Static):
     
     # Filter state
     search_query: reactive[str] = reactive("")
-    status_filter: reactive[str] = reactive("")
     tag_filter: reactive[str] = reactive("")
     assignee_filter: reactive[str] = reactive("")
     
@@ -340,7 +419,6 @@ class TicketBoard(Static):
     def _clear_filters(self) -> None:
         """Clear all filter inputs."""
         self.search_query = ""
-        self.status_filter = ""
         self.tag_filter = ""
         self.assignee_filter = ""
         
@@ -518,13 +596,7 @@ class TicketBoard(Static):
             self.notify(f"Plan directory not found: {plan_dir}", severity="error")
             return
         
-        # Find the implementation plan file
-        plan_file = None
-        for candidate in ["03-implementation-plan.md", "01-prd.md", "02-spec.md", "03-plan.md", "04-progress.md"]:
-            candidate_path = plan_dir / candidate
-            if candidate_path.exists():
-                plan_file = candidate_path
-                break
+        plan_file = first_existing_file(plan_dir, PLAN_DOC_OPEN_ORDER)
         
         if plan_file is None:
             self.notify(f"No plan documents found in {plan_dir}", severity="warning")
@@ -533,50 +605,8 @@ class TicketBoard(Static):
         self._open_file(plan_file)
     
     def _open_file(self, file_path: Path) -> None:
-        """Open a file using PAGER or EDITOR (safe implementation without shell)."""
-        if not file_path.exists():
-            self.notify(f"File not found: {file_path}", severity="error")
-            return
-        
-        # Determine command to use
-        editor = os.environ.get("EDITOR", "").strip()
-        pager = os.environ.get("PAGER", "").strip()
-        
-        cmd_parts = None
-        if editor:
-            # Parse editor command (may include flags like "code -w")
-            try:
-                cmd_parts = shlex.split(editor) + [str(file_path)]
-            except ValueError:
-                # Fallback if shlex fails
-                cmd_parts = [editor, str(file_path)]
-        elif pager:
-            try:
-                cmd_parts = shlex.split(pager) + [str(file_path)]
-            except ValueError:
-                cmd_parts = [pager, str(file_path)]
-        else:
-            # Find fallback pager without shell
-            for fallback in ["less", "more", "cat"]:
-                if shutil.which(fallback):
-                    cmd_parts = [fallback, str(file_path)]
-                    break
-        
-        if not cmd_parts:
-            self.notify("No pager or editor found. Set $PAGER or $EDITOR.", severity="error")
-            return
-        
-        # Run the command with terminal suspend (no shell)
-        try:
-            with self.app.suspend():
-                result = subprocess.run(cmd_parts, check=False)
-                exit_code = result.returncode
-        except Exception as e:
-            self.notify(f"Failed to suspend terminal: {e}", severity="error")
-            return
-        
-        if exit_code != 0:
-            self.notify(f"Command failed (exit code: {exit_code})", severity="error")
+        """Open a file using EDITOR/PAGER."""
+        open_file(self, file_path)
 
 
 class TicketflowApp(App):
@@ -592,7 +622,7 @@ class TicketflowApp(App):
         Binding("1", "open_doc_1", "Open PRD"),
         Binding("2", "open_doc_2", "Open Spec"),
         Binding("3", "open_doc_3", "Open Plan"),
-        Binding("4", "open_doc_4", "Open Progress"),
+        Binding("4", "open_doc_4", "Open Breakdown"),
         Binding("?", "help", "Help"),
     ]
     
@@ -604,8 +634,8 @@ class TicketflowApp(App):
             with TabPane("Tickets", id="tab-tickets"):
                 yield TicketBoard()
             
-            with TabPane("Topics", id="tab-topics"):
-                yield TopicBrowser()
+            with TabPane("Plans", id="tab-plans"):
+                yield PlanBrowser()
         
         yield Footer()
     
@@ -618,10 +648,10 @@ class TicketflowApp(App):
             ticket_board = self.query_one(TicketBoard)
             ticket_board.load_tickets()
             self.notify("Tickets refreshed")
-        elif active == "tab-topics":
-            topic_browser = self.query_one(TopicBrowser)
-            topic_browser.load_topics()
-            self.notify("Topics refreshed")
+        elif active == "tab-plans":
+            plan_browser = self.query_one(PlanBrowser)
+            plan_browser.load_plans()
+            self.notify("Plans refreshed")
     
     def action_open_doc(self) -> None:
         """Open the selected item (delegates to active widget)."""
@@ -631,9 +661,9 @@ class TicketflowApp(App):
         if active == "tab-tickets":
             ticket_board = self.query_one(TicketBoard)
             ticket_board.action_open_in_editor()
-        elif active == "tab-topics":
-            topic_browser = self.query_one(TopicBrowser)
-            topic_browser.action_open_doc()
+        elif active == "tab-plans":
+            plan_browser = self.query_one(PlanBrowser)
+            plan_browser.action_open_doc()
     
     def action_expand_desc(self) -> None:
         """Toggle description expand (tickets only)."""
@@ -645,24 +675,54 @@ class TicketflowApp(App):
             ticket_board.action_toggle_description()
     
     def action_open_doc_1(self) -> None:
-        """Open PRD document (01-prd.md) for selected ticket."""
-        self._open_plan_doc("01-prd.md")
+        """Open PRD document (01-prd.md)."""
+        tabbed = self.query_one(TabbedContent)
+        active = tabbed.active
+        
+        if active == "tab-plans":
+            plan_browser = self.query_one(PlanBrowser)
+            plan_browser.action_open_doc_1()
+        else:
+            self._open_plan_doc_for_ticket("01-prd.md")
     
     def action_open_doc_2(self) -> None:
-        """Open Spec document (02-spec.md) for selected ticket."""
-        self._open_plan_doc("02-spec.md")
+        """Open Spec document (02-spec.md)."""
+        tabbed = self.query_one(TabbedContent)
+        active = tabbed.active
+        
+        if active == "tab-plans":
+            plan_browser = self.query_one(PlanBrowser)
+            plan_browser.action_open_doc_2()
+        else:
+            self._open_plan_doc_for_ticket("02-spec.md")
     
     def action_open_doc_3(self) -> None:
-        """Open Plan document (03-implementation-plan.md) for selected ticket."""
-        # Try 03-implementation-plan.md first, then 03-plan.md
-        if not self._open_plan_doc("03-implementation-plan.md"):
-            self._open_plan_doc("03-plan.md")
+        """Open Plan document (03-implementation-plan.md)."""
+        tabbed = self.query_one(TabbedContent)
+        active = tabbed.active
+        
+        if active == "tab-plans":
+            plan_browser = self.query_one(PlanBrowser)
+            plan_browser.action_open_doc_3()
+        else:
+            # Try 03-implementation-plan.md first, then 03-plan.md
+            if not self._open_plan_doc_for_ticket("03-implementation-plan.md"):
+                self._open_plan_doc_for_ticket("03-plan.md")
     
     def action_open_doc_4(self) -> None:
-        """Open Progress document (04-progress.md) for selected ticket."""
-        self._open_plan_doc("04-progress.md")
+        """Open ticket breakdown document."""
+        tabbed = self.query_one(TabbedContent)
+        active = tabbed.active
+        
+        if active == "tab-plans":
+            plan_browser = self.query_one(PlanBrowser)
+            plan_browser.action_open_doc_4()
+        else:
+            for filename in TICKET_BREAKDOWN_FILES:
+                if self._open_plan_doc_for_ticket(filename):
+                    break
     
-    def _open_plan_doc(self, filename: str) -> bool:
+    def _open_plan_doc_for_ticket(self, filename: str) -> bool:
         """Open a plan document by filename.
         
         Returns True if document was found and opened, False otherwise.
@@ -697,10 +757,14 @@ class TicketflowApp(App):
   1        Open PRD (01-prd.md)
   2        Open Spec (02-spec.md)
   3        Open Plan (03-implementation-plan.md)
-  4        Open Progress (04-progress.md)
+  4        Open Ticket Breakdown (04-ticket-breakdown.md)
 
-[b]Topics Tab[/b]
-  o        Open topic file
+[b]Plans Tab[/b]
+  o        Open PRD (or first available doc)
+  1        Open PRD (01-prd.md)
+  2        Open Spec (02-spec.md)
+  3        Open Implementation Plan
+  4        Open Ticket Breakdown (04-ticket-breakdown.md)
 
 [b]Navigation[/b]
   Tab      Move focus

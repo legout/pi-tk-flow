@@ -31,30 +31,30 @@ TabPane {
     padding: 0;
 }
 
-/* Topic Browser Styles */
-#topic-sidebar {
-    width: 40%;
+/* Plan Browser Styles */
+#plan-sidebar {
+    width: 45%;
     border: solid $primary;
     padding: 1;
 }
 
-#topic-detail {
-    width: 60%;
+#plan-detail {
+    width: 55%;
     border: solid $primary;
     padding: 1;
 }
 
-#topic-list {
+#plan-list {
     height: 1fr;
     border: solid $primary-darken-2;
     padding: 0;
 }
 
-#topic-search {
+#plan-search {
     margin-bottom: 1;
 }
 
-#topic-detail-content {
+#plan-detail-content {
     height: 1fr;
 }
 
