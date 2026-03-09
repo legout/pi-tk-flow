@@ -279,6 +279,29 @@ After phase-2 completion (sync mode), ensure both files exist:
 
 If one exists but the other is missing, duplicate content so both exist with identical text.
 
+### 6.6 Materialize and verify expected artifacts (sync runs)
+
+Normalize expected chain outputs to canonical root paths in `<CHAIN_DIR>`.
+
+```bash
+EXPECTED_FILES="anchor-context.md research.md library-research.md brainstorm-draft.md"
+
+for name in $EXPECTED_FILES; do
+  if [ ! -f "<CHAIN_DIR>/$name" ]; then
+    FOUND=$(find "<CHAIN_DIR>" -name "$name" -type f 2>/dev/null | head -1)
+    if [ -n "$FOUND" ]; then
+      cp "$FOUND" "<CHAIN_DIR>/$name"
+    fi
+  fi
+done
+```
+
+Required final docs in `<PLAN_DIR>`:
+- `00-brainstorm.md`
+- `00-design.md`
+
+If either required final doc is missing, report it explicitly as a blocker.
+
 If async=true:
 - Return run id/status immediately for phase 2.
 - State artifact path root `<CHAIN_DIR>`.

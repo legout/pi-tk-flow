@@ -207,6 +207,34 @@ Same chain, but replace the final `tf-closer` step with:
 { "agent": "documenter", "task": "Write close-summary.md for simplification target '<TARGET>'. Summarize what changed, what validations ran, whether behavior preservation and readability look clear, and what follow-up work (if any) remains.", "reads": ["anchor-context.md", "implementation.md", "review.md", "test-results.md", "fixes.md", "review-post-fix.md"], "output": "close-summary.md" }
 ```
 
+### 5.5) Materialize and verify expected phase-2 artifacts (sync runs)
+
+After phase-2 completion in synchronous mode, normalize outputs to canonical root paths in `<CHAIN_DIR>`.
+
+```bash
+EXPECTED_FILES="plan.md implementation.md review.md test-results.md fixes.md review-post-fix.md close-summary.md"
+
+for name in $EXPECTED_FILES; do
+  if [ ! -f "<CHAIN_DIR>/$name" ]; then
+    FOUND=$(find "<CHAIN_DIR>" -name "$name" -type f 2>/dev/null | head -1)
+    if [ -n "$FOUND" ]; then
+      cp "$FOUND" "<CHAIN_DIR>/$name"
+    fi
+  fi
+done
+```
+
+Required presence checks before final reporting:
+- `plan.md`
+- `implementation.md`
+- `review.md`
+- `test-results.md`
+- `fixes.md`
+- `review-post-fix.md`
+- `close-summary.md`
+
+If any required file is missing, report it explicitly as a blocker.
+
 If async=true:
 - Return run id/status immediately.
 - State artifact path root `<CHAIN_DIR>`.

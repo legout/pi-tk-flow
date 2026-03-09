@@ -3,6 +3,8 @@ name: tf-brainstorm
 description: Brainstorm preset with seeded anchoring (static sequential chain; top-level /tf-brainstorm may add dynamic routing)
 ---
 
+Note: When `artifacts: true` is used, outputs may be written under run/session subdirectories (including `parallel-*` folders) instead of directly at `<CHAIN_DIR>/<file>`. Callers should materialize expected outputs to canonical `<CHAIN_DIR>/` paths and verify required files before final reporting.
+
 ## scout
 output: scout-context.md
 progress: true

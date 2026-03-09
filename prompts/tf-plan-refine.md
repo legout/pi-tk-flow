@@ -167,6 +167,31 @@ If `NEEDS_REFINEMENT=true`, run phase 2 with:
 }
 ```
 
+### 5.5) Materialize and verify expected artifacts (sync runs)
+
+After phase-2 completion in synchronous mode, normalize expected chain outputs to canonical root paths in `<CHAIN_DIR>`.
+
+```bash
+EXPECTED_FILES="plan-gaps.md plan-review.md plan-refined.md refinement-summary.md"
+
+for name in $EXPECTED_FILES; do
+  if [ ! -f "<CHAIN_DIR>/$name" ]; then
+    FOUND=$(find "<CHAIN_DIR>" -name "$name" -type f 2>/dev/null | head -1)
+    if [ -n "$FOUND" ]; then
+      cp "$FOUND" "<CHAIN_DIR>/$name"
+    fi
+  fi
+done
+```
+
+Required final docs in `<PLAN_DIR>`:
+- `05-plan-gaps.md`
+- `06-plan-review.md`
+- `07-refinement-summary.md`
+- plus `03-implementation-plan.md` when refinement was applied
+
+If any required final doc is missing, report it explicitly as a blocker.
+
 If async=true:
 - Return run id/status immediately for phase 2.
 - State artifact path root `<CHAIN_DIR>`.

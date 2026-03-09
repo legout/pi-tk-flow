@@ -349,6 +349,31 @@ When building the final `chain`, insert `<OPTIONAL_RESEARCH_STEPS>` first (if an
 
 When no research step is selected, omit `<OPTIONAL_RESEARCH_STEPS>` entirely and do not include research files in reads.
 
+### 6.5) Materialize and verify expected artifacts (sync runs)
+
+After phase-2 completion in synchronous mode, normalize expected chain outputs to canonical root paths in `<CHAIN_DIR>`.
+
+```bash
+EXPECTED_FILES="anchor-context.md research.md library-research.md prd-draft.md spec-draft.md design-draft.md plan-draft.md"
+
+for name in $EXPECTED_FILES; do
+  if [ ! -f "<CHAIN_DIR>/$name" ]; then
+    FOUND=$(find "<CHAIN_DIR>" -name "$name" -type f 2>/dev/null | head -1)
+    if [ -n "$FOUND" ]; then
+      cp "$FOUND" "<CHAIN_DIR>/$name"
+    fi
+  fi
+done
+```
+
+Also verify final plan artifacts exist in `<PLAN_DIR>`:
+- `00-design.md`
+- `01-prd.md`
+- `02-spec.md`
+- `03-implementation-plan.md`
+
+If any required final plan doc is missing, report it explicitly as a blocker.
+
 If async=true:
 - Return run id/status immediately for phase 2.
 - State artifact path root `<CHAIN_DIR>`.

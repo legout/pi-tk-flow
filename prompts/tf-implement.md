@@ -626,7 +626,40 @@ Before execution, run path-specific preflight (from guardrails above) and stop i
 }
 ```
 
-## 5. Execute and Report
+## 5. Execute, Materialize Artifacts, and Report
+
+After running the chosen chain, **do not assume outputs are at `<CHAIN_DIR>/<file>.md`**.
+With `artifacts: true`, outputs are often written inside a run/session subdirectory (and parallel-step subdirectories).
+
+### 5a) Materialize expected chain outputs to canonical locations
+
+After chain completion, copy expected outputs from anywhere under `<CHAIN_DIR>` to the canonical root paths under `<CHAIN_DIR>/`.
+
+```bash
+# Expected outputs by path
+EXPECTED_FILES="anchor-context.md plan.md implementation.md review.md test-results.md fixes.md review-post-fix.md close-summary.md research.md library-research.md"
+
+for name in $EXPECTED_FILES; do
+  # Prefer root file if it already exists; otherwise find first produced copy
+  if [ ! -f "<CHAIN_DIR>/$name" ]; then
+    FOUND=$(find "<CHAIN_DIR>" -name "$name" -type f 2>/dev/null | head -1)
+    if [ -n "$FOUND" ]; then
+      cp "$FOUND" "<CHAIN_DIR>/$name"
+    fi
+  fi
+done
+```
+
+### 5b) Required artifact presence check
+
+Before final reporting, explicitly check which expected files are present/missing and include that in your summary.
+If a required file for the chosen path is missing, call it out clearly as a blocker.
+
+- Path A required: `anchor-context.md`, `implementation.md`, `review.md`, `fixes.md`, `review-post-fix.md`, `close-summary.md`
+- Path B required: Path A + `plan.md`, `test-results.md`
+- Path C required: Path B + `research.md`, `library-research.md`
+
+### 5c) Report
 
 Use `subagent` tool with chosen path and report:
 
@@ -634,7 +667,8 @@ Use `subagent` tool with chosen path and report:
 2. **Whether research was included**
 3. **Summary of what was done**
 4. **Files changed**
-5. **Blockers/decisions**
+5. **Artifact status (present/missing)**
+6. **Blockers/decisions**
 
 Progress tracking and lessons learned are handled by `tf-closer` — no need to manually update `.tf/progress.md` or `.tf/AGENTS.md` in the main loop.
 

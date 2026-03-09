@@ -66,6 +66,26 @@ Rules:
 }
 ```
 
+## 3.5) Materialize and verify expected artifacts (sync runs)
+
+After synchronous completion, normalize `ticketize.md` to canonical root path in `<CHAIN_DIR>`.
+
+```bash
+if [ ! -f "<CHAIN_DIR>/ticketize.md" ]; then
+  FOUND=$(find "<CHAIN_DIR>" -name "ticketize.md" -type f 2>/dev/null | head -1)
+  if [ -n "$FOUND" ]; then
+    cp "$FOUND" "<CHAIN_DIR>/ticketize.md"
+  fi
+fi
+```
+
+Verify final required outputs in `<SOURCE_DIR>`:
+- `04-ticket-breakdown.md`
+- `tickets.yaml`
+- `ticketize-summary.md`
+
+If any required output is missing, report it explicitly as a blocker.
+
 If async=true:
 - Return run id/status immediately.
 - State artifact path root `<CHAIN_DIR>`.
