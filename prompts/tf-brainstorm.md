@@ -11,6 +11,7 @@ Brainstorm from `$@`.
 Treat `$@` as raw input.
 
 Supported flags:
+- `--quick` skip scout, context-builder only (fastest, for known codebases)
 - `--mode feature|refactor|simplify` (default: `feature`)
 - `--from <path>` optional seed notes/problem statement
 - `--async` run phase-2 chain in background
@@ -21,6 +22,9 @@ Rules:
 2. If topic is empty, STOP and ask for a topic.
 3. If both `--async` and `--clarify` are present, prefer async and set clarify=false.
 4. Reject unknown flags with a short help message.
+
+Derived settings:
+- `SKIP_SCOUT = true` when `--quick` is set, else `false`
 
 ## 1) Paths
 
@@ -74,10 +78,11 @@ If `--from` is not provided:
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
-  - Required baseline agents: `scout`, `context-builder`, `documenter`, `researcher`, `librarian`
-  - Optional optimization agent: `context-merger`
+  - Required baseline agents: `context-builder`, `documenter`, `researcher`, `librarian`
+  - Optional agents (skip if missing): `scout`, `context-merger`
 - If baseline agents are missing, STOP and report missing names.
-- Set `HAS_CONTEXT_MERGER=true|false` based on preflight.
+- Set `HAS_SCOUT=true|false` and `HAS_CONTEXT_MERGER=true|false` based on preflight.
+- If `SKIP_SCOUT=true` or `HAS_SCOUT=false`, use quick anchoring mode.
 
 ## 4) Phase 1 (always sync): Build Anchored Context
 
@@ -90,7 +95,33 @@ Use runtime defaults for phase 1:
 - `includeProgress: false`
 - `maxOutput: { "bytes": 200000, "lines": 5000 }`
 
-### Preferred phase-1 chain (when `HAS_CONTEXT_MERGER=true`)
+### Quick mode (when `SKIP_SCOUT=true`)
+
+Single-agent anchoring, no scout, no merge:
+
+```json
+{
+  "agentScope": "<AGENT_SCOPE>",
+  "chainDir": "<CHAIN_DIR>",
+  "clarify": false,
+  "async": false,
+  "artifacts": true,
+  "includeProgress": false,
+  "maxOutput": { "bytes": 200000, "lines": 5000 },
+  "agent": "context-builder",
+  "task": "Build brainstorming context for topic '<TOPIC>' (<MODE>). Read topic-seed.json FIRST. Read PROJECT.md when present, use AGENTS.md for repo operating guidance, and include lessons from .tf/AGENTS.md plus relevant .tf/knowledge when available. If from-seed.md exists, synthesize it. Explore the codebase as needed using grep/find/read to understand relevant files, constraints, and patterns. Output anchor-context.md with: Topic Summary, Existing Architecture Context, Constraints & Assumptions, Research Gaps, and concrete file hints.",
+  "reads": <SEED_READS>,
+  "output": "anchor-context.md"
+}
+```
+
+After the run, locate anchor-context.md using the file location strategy from section 5.
+
+### Standard mode (when `SKIP_SCOUT=false` and `HAS_SCOUT=true`)
+
+Parallel scout + context-builder, then merge:
+
+#### Preferred chain (when `HAS_CONTEXT_MERGER=true`)
 
 ```json
 {
@@ -130,7 +161,7 @@ Use runtime defaults for phase 1:
 }
 ```
 
-### Fallback phase-1 chain (when `HAS_CONTEXT_MERGER=false`)
+#### Fallback chain (when `HAS_CONTEXT_MERGER=false`)
 
 ```json
 {
@@ -172,7 +203,14 @@ Use runtime defaults for phase 1:
 
 ## 5) Research Routing (main-agent decision, no flags)
 
-Read `<CHAIN_DIR>/anchor-context.md` and decide:
+Locate and read the anchor-context file. Chain outputs may be in run-specific subdirectories when `artifacts: true`.
+
+**File location strategy:**
+1. First try: `<CHAIN_DIR>/anchor-context.md`
+2. If not found, search: `find <CHAIN_DIR> -name "anchor-context.md" -type f | head -1`
+3. Read from the found path (use the `read` tool, not bash `cat`)
+
+After reading `anchor-context.md`, decide:
 - `USE_RESEARCHER=true` when there are unresolved best-practice/design/operational gaps not already covered by `.tf/knowledge/**`.
 - `USE_LIBRARIAN=true` when external library behavior, version differences, internals, or source-level evidence are needed.
 - Both may be true; both may be false.
@@ -252,11 +290,13 @@ When synchronous run completes:
 1. Confirm created brainstorming docs:
    - `<PLAN_DIR>/00-brainstorm.md`
    - `<PLAN_DIR>/00-design.md`
-2. Report research routing decision:
+2. Report anchoring mode:
+   - quick (context-builder only) or standard (scout + context-builder)
+3. Report research routing decision:
    - researcher used? yes/no
    - librarian used? yes/no
-3. If used, list persisted knowledge files under `<KNOWLEDGE_TOPIC_DIR>`.
-4. Summarize recommendation + key trade-offs in 5-8 bullets.
-5. Recommend next step:
+4. If used, list persisted knowledge files under `<KNOWLEDGE_TOPIC_DIR>`.
+5. Summarize recommendation + key trade-offs in 5-8 bullets.
+6. Recommend next step:
    - `/tf-plan <topic> --mode <mode>`
    - optionally with `--from <PLAN_DIR>/00-design.md`

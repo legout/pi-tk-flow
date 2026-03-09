@@ -11,17 +11,14 @@ Refine planning docs from `$@`.
 Treat `$@` as raw input.
 
 Supported flags:
-- `--fast` (default — lightweight scout before refinement)
-- `--thorough` (deeper scout and stricter refinement)
 - `--async` run phase-2 chain in background
 - `--clarify` open phase-2 chain clarify UI
 
 Rules:
 1. First non-flag token is `SOURCE` (`<plan-dir>` or `<plan-dir>/03-implementation-plan.md`).
 2. If `SOURCE` is missing, STOP and ask for it.
-3. If both `--fast` and `--thorough` are present, STOP and ask user to choose one.
-4. If both `--async` and `--clarify` are present, prefer async and set clarify=false.
-5. Reject unknown flags with a short help message.
+3. If both `--async` and `--clarify` are present, prefer async and set clarify=false.
+4. Reject unknown flags with a short help message.
 
 ## 1) Resolve Paths
 
@@ -57,15 +54,14 @@ Write `${CHAIN_DIR}/plan-refine-seed.json`:
   "plan_dir": "<PLAN_DIR>",
   "plan_path": "<PLAN_PATH>",
   "topic_slug": "<TOPIC_SLUG>",
-  "analysis_mode": "<fast|thorough>",
   "knowledge_topic_dir": "<KNOWLEDGE_TOPIC_DIR>"
 }
 ```
 
 Set:
 - `SEED_READS = ["plan-refine-seed.json"] + <PLAN_DOC_READS>`
-- `ANALYZER_READS = ["plan-refine-seed.json", "scout-context.md"] + <PLAN_DOC_READS>`
-- `REVIEW_READS = ["plan-refine-seed.json", "scout-context.md", "plan-gaps.md"] + <PLAN_DOC_READS>`
+- `ANALYZER_READS = ["plan-refine-seed.json"] + <PLAN_DOC_READS>`
+- `REVIEW_READS = ["plan-refine-seed.json", "plan-gaps.md"] + <PLAN_DOC_READS>`
 - `REFINE_PLAN_READS = ["plan-refine-seed.json", "plan-gaps.md", "plan-review.md"] + <PLAN_DOC_READS>`
 - `REFINE_SUMMARY_READS = ["plan-gaps.md", "plan-review.md", "plan-refined.md"] + <PLAN_DOC_READS>`
 
@@ -78,7 +74,7 @@ Set:
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
-  - Required agents: `scout`, `plan-gap-analyzer`, `plan-reviewer`, `plan-fast`, `plan-deep`, `documenter`
+  - Required agents: `plan-gap-analyzer`, `plan-reviewer`, `plan-fast`, `documenter`
 - If any required agent is missing, STOP and report missing names.
 
 ## 4) Phase 1: analyze + review (skip if already available)
@@ -107,12 +103,6 @@ Use phase-1 runtime defaults:
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
     {
-      "agent": "scout",
-      "task": "Scout context for plan refinement. Read plan-refine-seed.json first. <if fast: lightweight seams+tests; if thorough: deeper architecture/dependency recon tied to plan assumptions>.",
-      "reads": <SEED_READS>,
-      "output": "scout-context.md"
-    },
-    {
       "agent": "plan-gap-analyzer",
       "task": "Analyze planning artifacts for gaps and write final files to '<PLAN_DIR>/05-plan-gaps.md' and '<KNOWLEDGE_TOPIC_DIR>/plan-gaps.md'.",
       "reads": <ANALYZER_READS>,
@@ -130,7 +120,13 @@ Use phase-1 runtime defaults:
 
 ## 5) Phase 2: refine artifacts
 
-Read `${CHAIN_DIR}/plan-gaps.md` and `${CHAIN_DIR}/plan-review.md`.
+Locate and read the gap analysis and review files.
+**File location strategy (chain outputs may be in run-specific subdirectories):**
+1. First try: `<CHAIN_DIR>/plan-gaps.md` and `<CHAIN_DIR>/plan-review.md`
+2. If not found, search: `find <CHAIN_DIR> -name "plan-gaps.md" -type f | head -1` (and same for plan-review.md)
+3. Read from the found paths
+
+After reading both files, analyze them:
 
 Set `NEEDS_REFINEMENT=true` if either contains:
 - `Status: NEEDS_REWORK`
@@ -188,4 +184,4 @@ When synchronous run completes:
 3. List persisted knowledge files in `<KNOWLEDGE_TOPIC_DIR>`.
 4. Recommend next step:
    - if GO: `/tf-ticketize <PLAN_DIR>/03-implementation-plan.md`
-   - if still NO-GO: run `/tf-plan-refine <PLAN_DIR> --thorough`
+   - if still NO-GO: review gaps and consider manual refinement

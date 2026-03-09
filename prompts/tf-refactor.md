@@ -151,7 +151,11 @@ Use runtime defaults:
 
 Same as above, but use `context-builder` for the final merge step.
 
-After the run, ensure `anchor-context.md` exists in `<CHAIN_DIR>`. If needed, locate it under a session subdirectory and copy it to `<CHAIN_DIR>/anchor-context.md`.
+After the run, ensure `anchor-context.md` exists in `<CHAIN_DIR>`.
+**File location strategy (chain outputs may be in run-specific subdirectories):**
+1. First check: `<CHAIN_DIR>/anchor-context.md`
+2. If not found, search: `find <CHAIN_DIR> -name "anchor-context.md" -type f | head -1`
+3. If found in subdirectory, copy to `<CHAIN_DIR>/anchor-context.md` for consistent access
 
 ## 5) Phase 2: Plan + Execute + Validate
 

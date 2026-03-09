@@ -11,17 +11,14 @@ Check planning quality from `$@`.
 Treat `$@` as raw input.
 
 Supported flags:
-- `--fast` (default — lightweight scout)
-- `--thorough` (deeper scout and stricter findings)
 - `--async` run chain in background
 - `--clarify` open chain clarify UI
 
 Rules:
 1. First non-flag token is `SOURCE` (`<plan-dir>` or `<plan-dir>/03-implementation-plan.md`).
 2. If `SOURCE` is missing, STOP and ask for it.
-3. If both `--fast` and `--thorough` are present, STOP and ask user to choose one.
-4. If both `--async` and `--clarify` are present, prefer async and set clarify=false.
-5. Reject unknown flags with a short help message.
+3. If both `--async` and `--clarify` are present, prefer async and set clarify=false.
+4. Reject unknown flags with a short help message.
 
 ## 1) Resolve Paths
 
@@ -57,15 +54,14 @@ Write `${CHAIN_DIR}/plan-check-seed.json`:
   "plan_dir": "<PLAN_DIR>",
   "plan_path": "<PLAN_PATH>",
   "topic_slug": "<TOPIC_SLUG>",
-  "analysis_mode": "<fast|thorough>",
   "knowledge_topic_dir": "<KNOWLEDGE_TOPIC_DIR>"
 }
 ```
 
 Set:
 - `SEED_READS = ["plan-check-seed.json"] + <PLAN_DOC_READS>`
-- `ANALYZER_READS = ["plan-check-seed.json", "scout-context.md"] + <PLAN_DOC_READS>`
-- `REVIEW_READS = ["plan-check-seed.json", "scout-context.md", "plan-gaps.md"] + <PLAN_DOC_READS>`
+- `ANALYZER_READS = ["plan-check-seed.json"] + <PLAN_DOC_READS>`
+- `REVIEW_READS = ["plan-check-seed.json", "plan-gaps.md"] + <PLAN_DOC_READS>`
 
 ## 3) Subagent Scope Guardrails
 
@@ -76,7 +72,7 @@ Set:
   - else -> `user`
 - Preflight:
   - `subagent {"action":"list","agentScope":"<AGENT_SCOPE>"}`
-  - Required agents: `scout`, `plan-gap-analyzer`, `plan-reviewer`
+  - Required agents: `plan-gap-analyzer`, `plan-reviewer`
 - If any required agent is missing, STOP and report missing names.
 
 ## 4) Run Plan-Check Chain
@@ -88,8 +84,6 @@ Use:
 - `includeProgress: false`
 - `maxOutput: { "bytes": 200000, "lines": 5000 }`
 
-### Fast mode (default)
-
 ```json
 {
   "agentScope": "<AGENT_SCOPE>",
@@ -100,12 +94,6 @@ Use:
   "includeProgress": false,
   "maxOutput": { "bytes": 200000, "lines": 5000 },
   "chain": [
-    {
-      "agent": "scout",
-      "task": "Lightweight scout for plan quality check. Read plan-check-seed.json first. Focus on architecture seams, dependency hotspots, and test baseline relevant to PLAN_PATH.",
-      "reads": <SEED_READS>,
-      "output": "scout-context.md"
-    },
     {
       "agent": "plan-gap-analyzer",
       "task": "Analyze planning artifacts for gaps and write final files to '<PLAN_DIR>/05-plan-gaps.md' and '<KNOWLEDGE_TOPIC_DIR>/plan-gaps.md'. Include explicit ticketization readiness.",
@@ -122,24 +110,20 @@ Use:
 }
 ```
 
-### Thorough mode
-
-Same chain, but scout task should do deeper recon:
-- read higher-impact modules and tests relevant to plan scope
-- validate sequencing assumptions against actual code seams
-- identify integration and rollout risks early
-
-(Keep analyzer/reviewer steps unchanged.)
-
 ## 5) Post-run File Guarantees
 
 When synchronous run completes, ensure these exist in `PLAN_DIR`:
 - `05-plan-gaps.md`
 - `06-plan-review.md`
 
-If a target file is missing, copy from chain artifacts:
-- `${CHAIN_DIR}/plan-gaps.md` -> `<PLAN_DIR>/05-plan-gaps.md`
-- `${CHAIN_DIR}/plan-review.md` -> `<PLAN_DIR>/06-plan-review.md`
+If a target file is missing, locate and copy from chain artifacts.
+**File location strategy (chain outputs may be in run-specific subdirectories):**
+1. First try: `<CHAIN_DIR>/<filename>`
+2. If not found, search: `find <CHAIN_DIR> -name "<filename>" -type f | head -1`
+
+Copy found files:
+- `<found-plan-gaps.md>` -> `<PLAN_DIR>/05-plan-gaps.md`
+- `<found-plan-review.md>` -> `<PLAN_DIR>/06-plan-review.md`
 
 Also ensure knowledge persistence:
 - `<KNOWLEDGE_TOPIC_DIR>/plan-gaps.md`
@@ -159,7 +143,6 @@ When synchronous run completes:
 2. Report decision from review:
    - ticketization GO or NO-GO
    - top 3 blockers (if NO-GO)
-3. Note analysis mode used (fast/thorough).
-4. Recommend next step:
+3. Recommend next step:
    - if GO: `/tf-ticketize <PLAN_DIR>/03-implementation-plan.md`
    - if NO-GO: `/tf-plan-refine <PLAN_DIR>`
