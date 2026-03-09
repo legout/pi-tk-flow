@@ -154,9 +154,9 @@ export default function tfBootstrapExtension(pi: ExtensionAPI) {
 	const promptsTemplateDir = path.resolve(__dirname, "..", "prompts");
 	const skillsTemplateDir = path.resolve(__dirname, "..", "skills");
 
-	pi.registerCommand("tf-bootstrap-install", {
+	pi.registerCommand("tf-bootstrap", {
 		description:
-			"Install/update tf workflow templates. Usage: /tf-bootstrap-install [--scope user|project] [--dry-run] [--copy-prompts] [--copy-skills] [--copy-all|--materialize] [--no-overwrite]",
+			"Install/update tf workflow templates. Usage: /tf-bootstrap [--scope user|project] [--dry-run] [--copy-prompts] [--copy-skills] [--copy-all|--materialize] [--no-overwrite]",
 		handler: async (args, ctx) => {
 			const scope = parseScope(args);
 			const dryRun = parseFlag(args, "--dry-run");
@@ -214,7 +214,7 @@ export default function tfBootstrapExtension(pi: ExtensionAPI) {
 			if (ctx.hasUI) {
 				const mode = dryRun ? "DRY RUN" : "APPLIED";
 				const lines = [
-					`/tf-bootstrap-install (${mode})`,
+					`/tf-bootstrap (${mode})`,
 					`Scope: ${scope}`,
 					`Overwrite mode: ${noOverwrite ? "no-overwrite (changed files preserved)" : "overwrite changed files"}`,
 					`Root destination: ${rootDestinationDir}`,
