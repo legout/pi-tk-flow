@@ -72,8 +72,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {dep}", file=sys.stderr)
         print("", file=sys.stderr)
         print("Install with one of:", file=sys.stderr)
-        print("  uv tool install --from '.[ui]' tf-ui", file=sys.stderr)
-        print("  uvx --from '.[ui]' tf-ui", file=sys.stderr)
+        print("  uv tool install --from '.[ui]' pi-tk-flow-ui --reinstall", file=sys.stderr)
+        print("  uvx --from '.[ui]' pi-tk-flow-ui", file=sys.stderr)
         print("  # or for editable local development", file=sys.stderr)
         print("  pip install -e '.[ui]'", file=sys.stderr)
         return 1

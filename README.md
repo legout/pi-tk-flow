@@ -396,7 +396,7 @@ It is **not** exposed as a pi command anymore.
 From a published package or git source, install the standalone CLI:
 
 ```bash
-uv tool install --from 'git+https://github.com/legout/pi-tk-flow[ui]' tf-ui
+uv tool install --from 'git+https://github.com/legout/pi-tk-flow[ui]' pi-tk-flow-ui
 ```
 
 Then run:
@@ -405,12 +405,17 @@ Then run:
 tf-ui
 ```
 
+> **Note:** If you previously installed without the `[ui]` extra and get a "UI dependencies not installed" error, use `--reinstall` to force a fresh resolution:
+> ```bash
+> uv tool install --from 'git+https://github.com/legout/pi-tk-flow[ui]' pi-tk-flow-ui --reinstall
+> ```
+
 ### Install from a local checkout with `uv tool install`
 
 From the repository root:
 
 ```bash
-uv tool install --from '.[ui]' tf-ui
+uv tool install --from '.[ui]' pi-tk-flow-ui
 ```
 
 Then run:
@@ -424,13 +429,13 @@ tf-ui
 From the repository root:
 
 ```bash
-uvx --from '.[ui]' tf-ui
+uvx --from '.[ui]' pi-tk-flow-ui
 ```
 
 From git directly:
 
 ```bash
-uvx --from 'git+https://github.com/legout/pi-tk-flow[ui]' tf-ui
+uvx --from 'git+https://github.com/legout/pi-tk-flow[ui]' pi-tk-flow-ui
 ```
 
 ### Alternative local dev install
@@ -489,7 +494,7 @@ textual serve "tf-ui" --host 127.0.0.1 --port 8000
 
 | Issue | Solution |
 |-------|----------|
-| `Error: UI dependencies not installed` | Run `uv tool install --from '.[ui]' tf-ui` or `uvx --from '.[ui]' tf-ui` |
+| `Error: UI dependencies not installed` | Run `uv tool install --from '.[ui]' pi-tk-flow-ui --reinstall` or `uvx --from '.[ui]' pi-tk-flow-ui` |
 | `No tickets found` | Create tickets under `.tickets/` |
 | `No plans found` | Create a plan with `/tf-plan` first |
 | Editor doesn't open | Set `$EDITOR` or `$PAGER` environment variable |
