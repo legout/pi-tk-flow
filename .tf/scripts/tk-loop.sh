@@ -134,10 +134,11 @@ check_pid_lock() {
     fi
 }
 
-# Write initial metrics.json
+# Write initial metrics.json atomically
 write_initial_metrics() {
     local timestamp=$(get_timestamp)
-    cat > "$STATE_DIR/metrics.json" <<EOF
+    local temp_file="$STATE_DIR/metrics.json.tmp.$$"
+    cat > "$temp_file" <<EOF
 {
   "started_at": "$timestamp",
   "mode": "$MODE",
@@ -147,15 +148,17 @@ write_initial_metrics() {
   "pid": $$
 }
 EOF
+    mv "$temp_file" "$STATE_DIR/metrics.json"
 }
 
-# Update metrics.json with current state
+# Update metrics.json with current state (atomic write)
 update_metrics() {
     local processed="$1"
     local failed="$2"
     local current="${3:-null}"
     local timestamp=$(get_timestamp)
     local runtime_sec=$(get_runtime_sec)
+    local temp_file="$STATE_DIR/metrics.json.tmp.$$"
     
     # Build current_ticket value
     local current_value
@@ -165,9 +168,13 @@ update_metrics() {
         current_value="null"
     fi
     
-    cat > "$STATE_DIR/metrics.json" <<EOF
+    # Extract started_at from existing metrics.json or use current timestamp
+    local started_at
+    started_at=$(cat "$STATE_DIR/metrics.json" 2>/dev/null | grep -o '"started_at": *"[^"]*"' | cut -d'"' -f4 || echo "$timestamp")
+    
+    cat > "$temp_file" <<EOF
 {
-  "started_at": "$(cat "$STATE_DIR/metrics.json" 2>/dev/null | grep -o '"started_at": *"[^"]*"' | cut -d'"' -f4 || echo "$timestamp")",
+  "started_at": "$started_at",
   "mode": "$MODE",
   "tickets_processed": $processed,
   "tickets_failed": $failed,
@@ -177,6 +184,7 @@ update_metrics() {
   "pid": $$
 }
 EOF
+    mv "$temp_file" "$STATE_DIR/metrics.json"
 }
 
 # Escape string for JSON value context
@@ -426,9 +434,11 @@ TICKETS_FAILED=0
 record_success() {
     local ticket_id="$1"
     local timestamp=$(get_timestamp)
+    local escaped_id
+    escaped_id=$(json_escape "$ticket_id")
     
     # Append JSONL record to processed.jsonl
-    echo "{\"id\":\"$ticket_id\",\"ts\":\"$timestamp\"}" >> "$STATE_DIR/processed.jsonl"
+    echo "{\"id\":\"$escaped_id\",\"ts\":\"$timestamp\"}" >> "$STATE_DIR/processed.jsonl"
     
     # Update counter
     ((TICKETS_PROCESSED++))
@@ -446,9 +456,11 @@ record_failure() {
     local ticket_id="$1"
     local exit_code="$2"
     local timestamp=$(get_timestamp)
+    local escaped_id
+    escaped_id=$(json_escape "$ticket_id")
     
     # Append JSONL record to failed.jsonl
-    echo "{\"id\":\"$ticket_id\",\"ts\":\"$timestamp\",\"error\":\"exit code $exit_code\"}" >> "$STATE_DIR/failed.jsonl"
+    echo "{\"id\":\"$escaped_id\",\"ts\":\"$timestamp\",\"error\":\"exit code $exit_code\"}" >> "$STATE_DIR/failed.jsonl"
     
     # Update counter
     ((TICKETS_FAILED++))
