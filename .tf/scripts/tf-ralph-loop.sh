@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # =============================================================================
-# ralph-loop - External Ralph Wiggum Loop
+# tf-ralph-loop - External Ralph Wiggum Loop
 # =============================================================================
 # Continuously processes tickets from the tk queue using tk ready and
 # pi "/tk-implement <ID>" with configurable execution modes.
 #
-# Usage: ralph-loop [OPTIONS]
+# Usage: tf-ralph-loop [OPTIONS]
 #
 # Options:
 #     --clarify       Run with clarify TUI (default)
@@ -20,8 +20,8 @@ set -euo pipefail
 #     --version       Show version information
 #
 # Environment Variables:
-#     TK_LOOP_POLL_INTERVAL   Seconds between polls (default: 5)
-#     TK_LOOP_STATE_DIR       State directory (default: .ralph-loop-state)
+#     TF_RALPH_LOOP_POLL_INTERVAL   Seconds between polls (default: 5)
+#     TF_RALPH_LOOP_STATE_DIR       State directory (default: .tf/ralph)
 # =============================================================================
 
 # =============================================================================
@@ -29,7 +29,7 @@ set -euo pipefail
 # =============================================================================
 
 # Constants
-SCRIPT_NAME="ralph-loop"
+SCRIPT_NAME="tf-ralph-loop"
 VERSION="1.0.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -38,8 +38,8 @@ MODE="clarify"
 DRY_RUN=false
 VERBOSE=false
 RUN_ONCE=false
-POLL_INTERVAL="${TK_LOOP_POLL_INTERVAL:-5}"
-STATE_DIR="${TK_LOOP_STATE_DIR:-.ralph-loop-state}"
+POLL_INTERVAL="${TF_RALPH_LOOP_POLL_INTERVAL:-5}"
+STATE_DIR="${TF_RALPH_LOOP_STATE_DIR:-.tf/ralph}"
 START_TIME=""
 
 # Help text
@@ -61,8 +61,8 @@ Options:
     --version       Show version information
 
 Environment Variables:
-    TK_LOOP_POLL_INTERVAL   Seconds between polls (default: 5)
-    TK_LOOP_STATE_DIR       State directory (default: .ralph-loop-state)
+    TF_RALPH_LOOP_POLL_INTERVAL   Seconds between polls (default: 5)
+    TF_RALPH_LOOP_STATE_DIR       State directory (default: .tf/ralph)
 
 Examples:
     $SCRIPT_NAME --clarify
@@ -122,7 +122,7 @@ check_pid_lock() {
         if [[ -n "$existing_pid" ]]; then
             # Check if the process is still running
             if kill -0 "$existing_pid" 2>/dev/null; then
-                error "Another ralph-loop instance is already running (PID: $existing_pid)"
+                error "Another tf-ralph-loop instance is already running (PID: $existing_pid)"
                 error "If this is incorrect, remove $pid_file manually"
                 exit 1
             else
@@ -326,7 +326,7 @@ parse_flags() {
 
 check_recursion_guard() {
     if [[ "${PI_TK_INTERACTIVE_CHILD:-}" == "1" ]]; then
-        error "Nested ralph-loop detected (PI_TK_INTERACTIVE_CHILD=1)"
+        error "Nested tf-ralph-loop detected (PI_TK_INTERACTIVE_CHILD=1)"
         error "This prevents infinite recursion loops. Exiting."
         exit 1
     fi
