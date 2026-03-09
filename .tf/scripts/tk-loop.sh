@@ -177,6 +177,17 @@ update_metrics() {
 EOF
 }
 
+# Escape string for JSON value context
+json_escape() {
+    local s="$1"
+    s=${s//\\/\\\\}
+    s=${s//\"/\\\"}
+    s=${s//$'\n'/\\n}
+    s=${s//$'\r'/\\r}
+    s=${s//$'\t'/\\t}
+    printf '%s' "$s"
+}
+
 # Write structured log entry to loop.log
 log_structured() {
     local level="$1"
@@ -185,7 +196,12 @@ log_structured() {
     local extra="$*"
     
     local timestamp=$(get_timestamp)
-    local entry="{\"ts\":\"$timestamp\",\"level\":\"$level\",\"msg\":\"$msg\""
+    local escaped_level
+    local escaped_msg
+    escaped_level=$(json_escape "$level")
+    escaped_msg=$(json_escape "$msg")
+
+    local entry="{\"ts\":\"$timestamp\",\"level\":\"$escaped_level\",\"msg\":\"$escaped_msg\""
     
     # Add extra fields if provided
     if [[ -n "$extra" ]]; then
@@ -546,7 +562,7 @@ main_loop() {
         while IFS= read -r ticket_id; do
             [[ -z "$ticket_id" ]] && continue
 
-            process_ticket "$ticket_id"
+            process_ticket "$ticket_id" || true
             # Continue to next ticket even on failure (no retry per PRD)
 
             sleep "$POLL_INTERVAL"

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cmd="${1:-}"
+
+case "$cmd" in
+  ready)
+    if [[ -n "${TK_MOCK_READY_FILE:-}" && -f "${TK_MOCK_READY_FILE}" ]]; then
+      cat "${TK_MOCK_READY_FILE}"
+      # Default deterministic behavior: consume queue once, then become empty.
+      if [[ "${TK_MOCK_READY_PERSIST:-0}" != "1" ]]; then
+        : > "${TK_MOCK_READY_FILE}"
+      fi
+    fi
+    ;;
+  show|close|blocked|status)
+    # Not required for tk-loop tests, but intentionally non-failing.
+    exit 0
+    ;;
+  "")
+    echo "mock tk: missing command" >&2
+    exit 1
+    ;;
+  *)
+    echo "mock tk: unsupported command '$cmd'" >&2
+    exit 1
+    ;;
+esac

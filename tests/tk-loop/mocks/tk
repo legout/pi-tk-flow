@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Mock tk CLI for testing tk-loop.sh
+# See MOCK_CONTRACT.md for behavior contract
+
+set -euo pipefail
+
+# TK_MOCK_READY_FILE: Path to file containing mock ticket list (one per line)
+# Format: "TICKET-ID description"
+# Exit codes: 0 on success, 1 on error
+
+case "${1:-}" in
+    ready)
+        # Return tickets from mock file if set and exists
+        if [[ -n "${TK_MOCK_READY_FILE:-}" && -f "$TK_MOCK_READY_FILE" ]]; then
+            cat "$TK_MOCK_READY_FILE"
+        fi
+        exit 0
+        ;;
+    show)
+        # Mock show command - return basic ticket info
+        if [[ -n "${2:-}" ]]; then
+            echo "Ticket: $2"
+            echo "Status: ready"
+            exit 0
+        else
+            echo "Error: Ticket ID required" >&2
+            exit 1
+        fi
+        ;;
+    blocked)
+        # Mock blocked command - return empty (no blocked tickets)
+        exit 0
+        ;;
+    close)
+        # Mock close command - just acknowledge
+        if [[ -n "${2:-}" ]]; then
+            [[ "${TK_MOCK_VERBOSE:-}" == "1" ]] && echo "Mock tk: Closed $2" >&2
+            exit 0
+        else
+            echo "Error: Ticket ID required" >&2
+            exit 1
+        fi
+        ;;
+    status)
+        # Mock status command
+        echo "tk mock: ready"
+        exit 0
+        ;;
+    --help|-h)
+        echo "Mock tk CLI for testing"
+        echo "Usage: tk <command> [args]"
+        echo "Commands: ready, show, blocked, close, status"
+        exit 0
+        ;;
+    "")
+        echo "Error: No command specified" >&2
+        exit 1
+        ;;
+    *)
+        echo "Mock tk: Unknown command: $1" >&2
+        exit 1
+        ;;
+esac

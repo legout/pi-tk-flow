@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cmd="$*"
+if [[ -n "${TK_MOCK_PI_VERBOSE:-}" ]]; then
+  echo "mock pi received: $cmd" >&2
+fi
+
+# Optional sleep to help signal-handling tests.
+if [[ -n "${TK_MOCK_PI_SLEEP_SEC:-}" ]]; then
+  sleep "${TK_MOCK_PI_SLEEP_SEC}"
+fi
+
+if [[ "$cmd" =~ /tk-implement[[:space:]]+([A-Za-z0-9-]+) ]]; then
+  ticket_id="${BASH_REMATCH[1]}"
+else
+  echo "mock pi: could not parse ticket id from command: $cmd" >&2
+  exit 2
+fi
+
+# Deterministic failure contract: IDs containing 'fail' (case-insensitive) fail.
+shopt -s nocasematch
+if [[ "$ticket_id" == *fail* ]]; then
+  exit 1
+fi
+shopt -u nocasematch
+
+exit 0
