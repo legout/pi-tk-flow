@@ -37,7 +37,8 @@ dev = [
 ]
 
 [project.scripts]
-tf-ui = "pi_tk_flow_ui.__main__:main"
+tf = "pi_tk_flow_ui.__main__:main"
+tf-ui = "pi_tk_flow_ui.__main__:run_ui"
 tf-ralph-loop = "pi_tk_flow_ui.tf_ralph_loop:main"
 
 [build-system]
