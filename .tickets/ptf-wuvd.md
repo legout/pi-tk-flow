@@ -1,6 +1,6 @@
 ---
 id: ptf-wuvd
-status: closed
+status: in_progress
 deps: [ptf-gg6c]
 links: []
 created: 2026-03-06T06:55:48Z
@@ -57,3 +57,19 @@ All 5 acceptance criteria verified:
 Implementation: Tasks 7, 9, 10 in .tf/plans/2026-03-04-external-ralph-wiggum-loop/03-implementation-plan.md
 Test results: tests/tk-loop/s3-state-observability.md
 Files: .tf/scripts/tk-loop.sh, .tk-loop-state/
+
+**2026-03-09T03:44:04Z**
+
+## Blocker (2026-03-09T04:41:34+01:00)
+
+Quick re-check Gate=Fail with 2 Major issues unresolved:
+1. **Runtime proof missing**: Verification report lacks command/output evidence for AC1-AC5 acceptance criteria
+2. **Non-atomic metrics.json writes**: Using `cat > metrics.json` instead of temp-file+mv pattern
+
+Required for closure:
+- Add concrete verification artifacts (command transcripts, test outputs) showing AC1-AC5 behavior in execution
+- Implement atomic writes for metrics.json (write to temp file, then mv)
+- Re-run quick re-check to verify fixes
+
+Commit: 1d0dfd7
+Chain: .subagent-runs/ptf-wuvd/c606de08

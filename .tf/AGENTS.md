@@ -67,3 +67,8 @@ Avoid ticket-specific trivia and duplicates.
 - **When to apply:** When testing lock file mechanisms that verify a process is actually running (not just that a PID file exists)
 - **Lesson:** Create a live background process (`sleep 60 &`) and write its actual PID to the lock file, rather than using a stale/hardcoded PID. This ensures the lock validation code exercises its real "process exists" check rather than passing vacuously because the PID is dead or doesn't exist.
 - **Source tickets:** ptf-ucgi (2026-03-09)
+
+### Atomic JSON File Writes in Shell Scripts
+- **When to apply:** When writing JSON files (metrics, state, config) that may be read by other processes or could be interrupted mid-write
+- **Lesson:** Never use direct `cat > file.json` or `echo ... > file.json` for JSON writes. Instead, write to a temp file in the same directory, then `mv` atomically: `cat > "$file.tmp" && mv "$file.tmp" "$file"`. This prevents readers from seeing partial/corrupt JSON if the write is interrupted. Without atomic writes, a crash or signal during write leaves invalid JSON that breaks downstream consumers.
+- **Source tickets:** ptf-wuvd (2026-03-09)
