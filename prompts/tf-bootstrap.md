@@ -1,6 +1,6 @@
 ---
 description: Install/update tf workflow templates (agents, chains, prompts, and optional bundled skills)
-model: minimax/m2.5
+model: minimax/MiniMax-M2.5
 thinking: low
 ---
 
