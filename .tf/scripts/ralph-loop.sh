@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # =============================================================================
-# tk-loop - External Ralph Wiggum Loop
+# ralph-loop - External Ralph Wiggum Loop
 # =============================================================================
 # Continuously processes tickets from the tk queue using tk ready and
 # pi "/tk-implement <ID>" with configurable execution modes.
 #
-# Usage: tk-loop [OPTIONS]
+# Usage: ralph-loop [OPTIONS]
 #
 # Options:
 #     --clarify       Run with clarify TUI (default)
@@ -21,7 +21,7 @@ set -euo pipefail
 #
 # Environment Variables:
 #     TK_LOOP_POLL_INTERVAL   Seconds between polls (default: 5)
-#     TK_LOOP_STATE_DIR       State directory (default: .tk-loop-state)
+#     TK_LOOP_STATE_DIR       State directory (default: .ralph-loop-state)
 # =============================================================================
 
 # =============================================================================
@@ -29,7 +29,7 @@ set -euo pipefail
 # =============================================================================
 
 # Constants
-SCRIPT_NAME="tk-loop"
+SCRIPT_NAME="ralph-loop"
 VERSION="1.0.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -39,7 +39,7 @@ DRY_RUN=false
 VERBOSE=false
 RUN_ONCE=false
 POLL_INTERVAL="${TK_LOOP_POLL_INTERVAL:-5}"
-STATE_DIR="${TK_LOOP_STATE_DIR:-.tk-loop-state}"
+STATE_DIR="${TK_LOOP_STATE_DIR:-.ralph-loop-state}"
 START_TIME=""
 
 # Help text
@@ -62,7 +62,7 @@ Options:
 
 Environment Variables:
     TK_LOOP_POLL_INTERVAL   Seconds between polls (default: 5)
-    TK_LOOP_STATE_DIR       State directory (default: .tk-loop-state)
+    TK_LOOP_STATE_DIR       State directory (default: .ralph-loop-state)
 
 Examples:
     $SCRIPT_NAME --clarify
@@ -122,7 +122,7 @@ check_pid_lock() {
         if [[ -n "$existing_pid" ]]; then
             # Check if the process is still running
             if kill -0 "$existing_pid" 2>/dev/null; then
-                error "Another tk-loop instance is already running (PID: $existing_pid)"
+                error "Another ralph-loop instance is already running (PID: $existing_pid)"
                 error "If this is incorrect, remove $pid_file manually"
                 exit 1
             else
@@ -326,7 +326,7 @@ parse_flags() {
 
 check_recursion_guard() {
     if [[ "${PI_TK_INTERACTIVE_CHILD:-}" == "1" ]]; then
-        error "Nested tk-loop detected (PI_TK_INTERACTIVE_CHILD=1)"
+        error "Nested ralph-loop detected (PI_TK_INTERACTIVE_CHILD=1)"
         error "This prevents infinite recursion loops. Exiting."
         exit 1
     fi

@@ -38,6 +38,7 @@ dev = [
 
 [project.scripts]
 tf-ui = "pi_tk_flow_ui.__main__:main"
+ralph-loop = "pi_tk_flow_ui.ralph_loop:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -50,6 +51,7 @@ packages = ["python/pi_tk_flow_ui"]
 include = [
     "python/pi_tk_flow_ui/*.py",
     "python/pi_tk_flow_ui/*.tcss",
+    "python/pi_tk_flow_ui/ralph-loop.sh",
 ]
 
 [tool.pytest.ini_options]
