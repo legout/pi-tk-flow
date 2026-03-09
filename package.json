@@ -1,6 +1,6 @@
 {
   "name": "pi-tf-flow",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": false,
   "type": "module",
   "description": "Reusable tf (ticket flow) implementation workflow for pi (prompt + subagent templates + bootstrap command)",
