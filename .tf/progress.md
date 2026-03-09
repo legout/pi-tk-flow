@@ -211,3 +211,23 @@ Append one entry per implementation run.
 - Tests: passed (all validation criteria)
 - Commit: 372d391
 - Chain: .subagent-runs/ptf-vzfu/9336e6e2
+
+## 2026-03-09T02:38:21+01:00 | ptf-3nor | closed
+
+- Path: A
+- Research: no
+- Summary: Created tk-loop.sh bootstrap with Tasks 1-4: help/version output, mode flag parsing with mutual-exclusion validation, recursion guard (PI_TK_INTERACTIVE_CHILD), and dependency validation for tk/pi binaries.
+- Files: .tf/scripts/tk-loop.sh, assets/agents/ticketizer.md
+- Tests: passed (manual verification)
+- Commit: c137efa
+- Chain: .subagent-runs/ptf-3nor/f722f926
+
+## 2026-03-09T03:16:32+01:00 | ptf-gg6c | closed
+
+- Path: B
+- Research: no
+- Summary: Implemented Tasks 5,6,8 for tk-loop: ticket parsing from tk ready output, mode-specific command building for all 4 modes (clarify/hands-free/dispatch/interactive), and sequential processing with empty-queue exit. Fixed exit code capture bug and set -e interaction to ensure proper error handling per PRD.
+- Files: .tf/scripts/tk-loop.sh
+- Tests: passed (all 5 acceptance criteria verified: AC1 ticket parsing, AC2 command building, AC3 sequential processing, AC4 dry-run mode, AC5 empty queue exit)
+- Commit: 8eaeb7a
+- Chain: .subagent-runs/ptf-gg6c

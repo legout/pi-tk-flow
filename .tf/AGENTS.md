@@ -47,3 +47,13 @@ Avoid ticket-specific trivia and duplicates.
 - **When to apply:** When documenting optional pi extensions that modify command behavior
 - **Lesson:** Document extension behavior with four key aspects: (1) Switch - what happens when command is invoked, (2) Fallback - what happens when command has no mapping, (3) Restore - what happens after command completes, (4) No-extension - what happens when extension is not installed. This provides clear expectations for users and implementers.
 - **Source tickets:** ptf-cb32 (2026-03-04)
+
+### Exit Code Capture with set -e Enabled
+- **When to apply:** When writing bash scripts with `set -e` that need to capture and handle command exit codes without exiting
+- **Lesson:** Use the pattern `local exit_code=0; command || exit_code=$?` instead of `if ! command; then exit_code=$?`. The `if !` negation causes `$?` to reflect the test result (0), not the original command failure. The `||` pattern prevents `set -e` from triggering while correctly capturing the actual exit code.
+- **Source tickets:** ptf-gg6c (2026-03-09)
+
+### Preventing Premature Exit in Error-Aware Loops
+- **When to apply:** When processing items sequentially in a loop with `set -e` enabled, where individual item failures should not stop the entire loop
+- **Lesson:** Append `|| true` to commands that may fail but should allow the loop to continue: `process_item "$item" || true`. This prevents `set -e` from exiting the script on failure while still allowing the function to log errors and return non-zero exit codes internally. Document the intent clearly (e.g., "continue to next item per PRD").
+- **Source tickets:** ptf-gg6c (2026-03-09)
