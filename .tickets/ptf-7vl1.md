@@ -1,6 +1,6 @@
 ---
 id: ptf-7vl1
-status: open
+status: closed
 deps: [ptf-ucgi]
 links: []
 created: 2026-03-06T06:55:48Z
@@ -28,3 +28,9 @@ Plan: Task 12
 - [ ] Testing section explains how to run integration tests.
 - [ ] Documentation reflects no automatic retry behavior.
 
+
+## Notes
+
+**2026-03-09T04:13:41Z**
+
+Documentation complete. README created at .tf/scripts/README.md with: installation, 4 mode examples, env vars, state schema, troubleshooting (stale locks, recursion guard, failed tickets), testing guide, and no-retry behavior documentation. All 5 AC met.
