@@ -37,6 +37,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODE="clarify"
 DRY_RUN=false
 VERBOSE=false
+RUN_ONCE=false
 POLL_INTERVAL="${TK_LOOP_POLL_INTERVAL:-5}"
 STATE_DIR="${TK_LOOP_STATE_DIR:-.tk-loop-state}"
 START_TIME=""
@@ -54,6 +55,7 @@ Options:
     --dispatch      Run in dispatch mode
     --interactive   Run in interactive mode
     --dry-run       Show what would be done without executing
+    --once          Process current queue once and exit
     --verbose       Enable verbose logging
     --help          Show this help message
     --version       Show version information
@@ -272,6 +274,9 @@ parse_flags() {
             --dry-run)
                 DRY_RUN=true
                 ;;
+            --once)
+                RUN_ONCE=true
+                ;;
             --verbose)
                 VERBOSE=true
                 ;;
@@ -301,6 +306,7 @@ parse_flags() {
     if [[ "$VERBOSE" == "true" ]]; then
         log "Mode: $MODE"
         log "Dry run: $DRY_RUN"
+        log "Run once: $RUN_ONCE"
         log "Poll interval: ${POLL_INTERVAL}s"
         log "State directory: $STATE_DIR"
     fi
@@ -534,14 +540,19 @@ cleanup() {
 # Polls tk ready and processes tickets sequentially
 # Exits cleanly when no tickets remain
 # Sleeps POLL_INTERVAL seconds between tickets
+# If RUN_ONCE is true, processes current queue once and exits
 main_loop() {
-    log "INFO" "Starting main loop (mode: $MODE, interval: ${POLL_INTERVAL}s)"
+    log "INFO" "Starting main loop (mode: $MODE, interval: ${POLL_INTERVAL}s${RUN_ONCE:+, once})"
 
     while true; do
         local tickets
 
         # Get ready tickets
         if ! tickets=$(get_ready_tickets); then
+            if [[ "$RUN_ONCE" == "true" ]]; then
+                log "ERROR" "Failed to fetch ready tickets in --once mode"
+                exit 1
+            fi
             log "WARN" "Failed to fetch ready tickets, will retry in ${POLL_INTERVAL}s"
             sleep "$POLL_INTERVAL"
             continue
@@ -567,6 +578,12 @@ main_loop() {
 
             sleep "$POLL_INTERVAL"
         done <<< "$tickets"
+        
+        # In --once mode, exit after processing current queue
+        if [[ "$RUN_ONCE" == "true" ]]; then
+            log "INFO" "Run-once mode complete. Exiting."
+            exit 0
+        fi
     done
 }
 

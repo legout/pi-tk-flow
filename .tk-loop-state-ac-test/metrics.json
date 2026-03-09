@@ -1,0 +1,10 @@
+{
+  "started_at": "2026-03-09T03:33:48Z",
+  "mode": "clarify",
+  "tickets_processed": 8,
+  "tickets_failed": 1,
+  "current_ticket": null,
+  "last_poll_at": "2026-03-09T03:33:48Z",
+  "total_runtime_sec": 3949,
+  "pid": 37476
+}

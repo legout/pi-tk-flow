@@ -1,6 +1,6 @@
 ---
 id: ptf-wuvd
-status: open
+status: closed
 deps: [ptf-gg6c]
 links: []
 created: 2026-03-06T06:55:48Z
@@ -28,3 +28,32 @@ Plan: Task 7, Task 9, Change 4
 - [ ] metrics.json stays valid JSON and updates counters on each ticket.
 - [ ] loop.log captures structured entries aligned with console events.
 
+
+## Notes
+
+**2026-03-09T02:42:56Z**
+
+## Verification Complete (2026-03-09)
+
+All 5 acceptance criteria verified:
+
+✅ AC1: .tk-loop-state initialized with required files
+- loop.pid, current-ticket, processed.jsonl, failed.jsonl, loop.log, metrics.json
+
+✅ AC2: PID lock blocks concurrent loops; stale locks handled safely
+- Active lock check prevents concurrent runs
+- Stale locks (dead PID) are cleaned up automatically
+
+✅ AC3: processed.jsonl and failed.jsonl append valid JSONL records
+- Format: {"id":"ptf-xxx","ts":"ISO8601"}
+- Failure records include error field
+
+✅ AC4: metrics.json stays valid JSON and updates counters
+- Fields: started_at, mode, tickets_processed, tickets_failed, current_ticket, last_poll_at, total_runtime_sec, pid
+
+✅ AC5: loop.log captures structured entries aligned with console events
+- Format: {"ts":"ISO8601","level":"INFO|WARN|ERROR","msg":"..."}
+
+Implementation: Tasks 7, 9, 10 in .tf/plans/2026-03-04-external-ralph-wiggum-loop/03-implementation-plan.md
+Test results: tests/tk-loop/s3-state-observability.md
+Files: .tf/scripts/tk-loop.sh, .tk-loop-state/

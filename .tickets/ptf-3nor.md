@@ -1,6 +1,6 @@
 ---
 id: ptf-3nor
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-03-06T06:55:48Z
@@ -28,3 +28,13 @@ Plan: Tasks 1-4
 - [ ] PI_TK_INTERACTIVE_CHILD=1 prevents nested loop invocation.
 - [ ] Missing tk or pi binaries are detected before loop start.
 
+
+## Notes
+
+**2026-03-09T01:39:28Z**
+
+Implementation complete:
+- Created .tf/scripts/tk-loop.sh with Tasks 1-4 bootstrap
+- AC1-5 all verified: --help, mode mutual-exclusion, unknown flag handling, recursion guard, dependency checks
+- Post-fix: resolved minor issue with --help/--version startup log pollution
+- Commit: c137efa

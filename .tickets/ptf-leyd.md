@@ -1,6 +1,6 @@
 ---
 id: ptf-leyd
-status: open
+status: closed
 deps: [ptf-wuvd]
 links: []
 created: 2026-03-06T06:55:48Z
@@ -28,3 +28,32 @@ Plan: Change 1, Tasks 8 and 10
 - [ ] SIGINT and SIGTERM trigger cleanup of pid.lock and current-ticket.
 - [ ] Shutdown path logs completion and exits cleanly.
 
+
+## Notes
+
+**2026-03-09T02:48:44Z**
+
+## Verification Complete (2026-03-09)
+
+All 5 acceptance criteria verified:
+
+✅ AC1: Failed tickets written to failed.jsonl with timestamp and error info
+- record_failure() appends valid JSONL: {"id":"...","ts":"...","error":"exit code N"}
+
+✅ AC2: Failed tickets are not retried automatically
+- No retry logic exists in the script
+- Spec explicitly requires no auto-retry, implementation follows this
+
+✅ AC3: Loop continues to remaining ready tickets after failure
+- process_ticket returns exit code but loop continues
+- Comment: "Continue to next ticket even on failure (no retry per PRD)"
+
+✅ AC4: SIGINT and SIGTERM trigger cleanup
+- trap cleanup INT TERM properly set
+- cleanup() removes loop.pid and clears current-ticket
+
+✅ AC5: Shutdown path logs completion and exits cleanly
+- Logs "Loop shutdown complete" before exit
+- Exits with code 0
+
+Test file: tests/tk-loop/s4-failure-shutdown.md

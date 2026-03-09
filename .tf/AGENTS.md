@@ -57,3 +57,13 @@ Avoid ticket-specific trivia and duplicates.
 - **When to apply:** When processing items sequentially in a loop with `set -e` enabled, where individual item failures should not stop the entire loop
 - **Lesson:** Append `|| true` to commands that may fail but should allow the loop to continue: `process_item "$item" || true`. This prevents `set -e` from exiting the script on failure while still allowing the function to log errors and return non-zero exit codes internally. Document the intent clearly (e.g., "continue to next item per PRD").
 - **Source tickets:** ptf-gg6c (2026-03-09)
+
+### Capturing Output and Exit Code with pipefail Enabled
+- **When to apply:** When writing bash scripts with `set -o pipefail` that need to capture both command output AND exit code for assertions
+- **Lesson:** Never pipe failing commands directly to grep/other tools under pipefail. Instead, capture output and exit code separately: `output=$(command 2>&1) || exit_code=$?`, then assert on both. Direct piping like `command | grep pattern` causes pipefail to propagate the command's failure before grep can match, breaking assertions that expect failure output to contain specific text.
+- **Source tickets:** ptf-ucgi (2026-03-09)
+
+### Live Process for PID Lock Testing
+- **When to apply:** When testing lock file mechanisms that verify a process is actually running (not just that a PID file exists)
+- **Lesson:** Create a live background process (`sleep 60 &`) and write its actual PID to the lock file, rather than using a stale/hardcoded PID. This ensures the lock validation code exercises its real "process exists" check rather than passing vacuously because the PID is dead or doesn't exist.
+- **Source tickets:** ptf-ucgi (2026-03-09)

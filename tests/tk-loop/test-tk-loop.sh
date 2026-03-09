@@ -153,7 +153,7 @@ test_single_ticket() {
     export TK_MOCK_READY_FILE="$TEST_DIR/single.txt"
     echo "ptf-test1 Test ticket" > "$TK_MOCK_READY_FILE"
     
-    if run_with_timeout 10 "$TK_LOOP" --dry-run 2>/dev/null; then
+    if run_with_timeout 10 "$TK_LOOP" --dry-run --once 2>/dev/null; then
         if [[ -f "$STATE_DIR/processed.jsonl" ]] && grep -q "ptf-test1" "$STATE_DIR/processed.jsonl"; then
             pass "Single ticket processed and recorded"
         else
@@ -180,7 +180,7 @@ ptf-test2 Second ticket
 ptf-test3 Third ticket
 EOF
     
-    if run_with_timeout 15 "$TK_LOOP" --dry-run 2>/dev/null; then
+    if run_with_timeout 15 "$TK_LOOP" --dry-run --once 2>/dev/null; then
         local count=0
         if [[ -f "$STATE_DIR/processed.jsonl" ]]; then
             count=$(wc -l < "$STATE_DIR/processed.jsonl" | tr -d ' ')
@@ -211,7 +211,7 @@ ptf-pass1 Will pass
 EOF
     
     # Run without dry-run to trigger mock failure behavior
-    run_with_timeout 15 "$TK_LOOP" --clarify 2>/dev/null || true
+    run_with_timeout 15 "$TK_LOOP" --clarify --once 2>/dev/null || true
     
     local passed=0 failed=0
     
