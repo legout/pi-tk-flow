@@ -69,9 +69,10 @@ Prefer AFK when safe.
    - Acceptance:
      - [ ] ...
    - Source links:
+     - Plan: <relative path to plan directory>
      - PRD: <section>
      - Spec: <section>
-     - Plan: <section>
+     - Impl: <section>
 
 ## Dependency Graph
 - <slice-a> -> <slice-b>
@@ -101,7 +102,8 @@ slices:
     description: |
       ...
     design: |
-      Links to PRD/spec/plan sections
+      Plan: <relative path to plan directory, e.g. .tf/plans/2026-03-04-slug>
+      PRD/Spec/Plan section references.
     acceptance: |
       - [ ] ...
       - [ ] ...
@@ -121,10 +123,30 @@ Creation order:
 Use `tk create` fields where possible:
 - `--type` from yaml (`feature|task|chore|epic|bug`)
 - `--description` with concise outcome
-- `--design` with references to planning docs
+- `--design` with plan directory path + section references (e.g., `Plan: .tf/plans/2026-03-04-slug\nPRD US-1; Spec §2; Plan Task 1.`)
 - `--acceptance` checklist
 - `--tags`
 - `--parent` for epic linkage
+
+### Multi-line Field Handling
+
+When `--acceptance`, `--description`, or `--design` contain multiple lines, you MUST use bash variable assignment with proper quoting to preserve newlines:
+
+```bash
+# CORRECT: Use variable assignment with actual newlines
+ACCEPTANCE="- [ ] First criterion
+- [ ] Second criterion
+- [ ] Third criterion"
+
+tk create "Ticket title" --acceptance "$ACCEPTANCE" ...
+```
+
+```bash
+# WRONG: Inline string with \n escapes
+tk create "Ticket title" --acceptance "- [ ] First criterion\n- [ ] Second criterion"
+```
+
+The `tk` CLI correctly handles newlines in quoted arguments. Never use literal `\n` in strings - always use actual line breaks.
 
 Record all created IDs and exact commands in `ticketize-summary.md`.
 
