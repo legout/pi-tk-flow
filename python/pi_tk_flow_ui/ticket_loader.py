@@ -14,6 +14,8 @@ from typing import Optional
 
 import yaml
 
+from .path_resolution import resolve_tickets_dir
+
 logger = logging.getLogger(__name__)
 
 # Regex pattern for YAML frontmatter (supports both Unix \n and Windows \r\n line endings)
@@ -123,7 +125,8 @@ class YamlTicketLoader:
 
         Args:
             tickets_dir: Optional path to tickets directory.
-                        If not provided, resolves to `.tickets` in repo root or cwd.
+                        If not provided, resolves to the current project's
+                        `.tickets` directory.
         """
         self.tickets_dir = tickets_dir or self._resolve_tickets_dir()
         self._tickets: list[Ticket] = []
@@ -131,20 +134,12 @@ class YamlTicketLoader:
         self._loaded = False
 
     def _resolve_tickets_dir(self) -> Path:
-        """Resolve the tickets directory from repo root or cwd.
+        """Resolve the current project's tickets directory.
 
         Returns:
             Resolved Path to the tickets directory
         """
-        # Find repo root by looking for .tf directory
-        cwd = Path.cwd()
-        for parent in [cwd, *cwd.parents]:
-            tf_dir = parent / ".tf"
-            if tf_dir.is_dir():
-                return parent / ".tickets"
-
-        # Fallback to cwd
-        return cwd / ".tickets"
+        return resolve_tickets_dir()
 
     def load_all(self, refresh: bool = False) -> list[Ticket]:
         """Load all tickets from the tickets directory.

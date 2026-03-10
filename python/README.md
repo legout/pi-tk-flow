@@ -2,6 +2,16 @@
 
 Standalone Textual TUI for browsing pi-tk-flow tickets and plans.
 
+## Fastest bootstrap with the PEP 723 `tf` launcher
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/legout/pi-tk-flow/main/bin/tf -o ~/.local/bin/tf
+chmod +x ~/.local/bin/tf
+
+tf ui
+tf ui --web
+```
+
 ## Install globally with uv
 
 From a git source:

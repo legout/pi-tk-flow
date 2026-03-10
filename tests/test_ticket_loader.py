@@ -274,25 +274,49 @@ status: open
 
 class TestTicketLoaderPaths:
     """Test path resolution for tickets directory."""
-    
-    def test_resolve_tickets_dir_finds_tf_parent(self, tmp_path: Path):
-        """Loader should find .tickets next to .tf directory."""
-        # Create structure: tmp_path/.tf and tmp_path/.tickets
+
+    def test_resolve_tickets_dir_finds_tf_parent(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """Loader should find .tickets next to a project-local .tf directory."""
         (tmp_path / ".tf").mkdir()
         (tmp_path / ".tickets").mkdir()
-        
-        # Create a ticket
+
         (tmp_path / ".tickets" / "test.md").write_text("""---
 id: test
 status: open
 ---
 # Test
 """)
-        
-        # Change to a subdirectory
+
         subdir = tmp_path / "subdir"
         subdir.mkdir()
-        
+        monkeypatch.chdir(subdir)
+
         loader = YamlTicketLoader()
-        # Should auto-resolve to tmp_path/.tickets
-        # This test requires being in the right directory context
+
+        assert loader.tickets_dir == tmp_path / ".tickets"
+        assert [ticket.id for ticket in loader.load_all()] == ["test"]
+
+    def test_prefers_repo_tickets_over_unrelated_ancestor_tf(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """Repo-local .tickets should win over an unrelated ancestor .tf directory."""
+        outer = tmp_path / "outer"
+        project = outer / "coding" / "example-project"
+        subdir = project / "src"
+
+        (outer / ".tf").mkdir(parents=True)
+        (project / ".git").mkdir(parents=True)
+        (project / ".tickets").mkdir(parents=True)
+        subdir.mkdir(parents=True)
+
+        (project / ".tickets" / "local.md").write_text("""---
+id: local-ticket
+status: open
+---
+# Local Ticket
+""", encoding="utf-8")
+
+        monkeypatch.chdir(subdir)
+
+        loader = YamlTicketLoader()
+
+        assert loader.tickets_dir == project / ".tickets"
+        assert [ticket.id for ticket in loader.load_all()] == ["local-ticket"]

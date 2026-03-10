@@ -24,6 +24,7 @@ PACKAGE_JSON = ROOT / "package.json"
 PYPROJECT = ROOT / "pyproject.toml"
 README = ROOT / "README.md"
 MODEL_CONFIGURATION = ROOT / "MODEL-CONFIGURATION.md"
+TF_LAUNCHER = ROOT / "bin" / "tf"
 PACKAGE_SURFACE_DIRS = [
     ROOT / "prompts",
     ROOT / "assets",
@@ -153,9 +154,22 @@ def test_readme_ui_section_matches_current_tui_surface() -> None:
     assert "uv tool install" in readme
     assert "uvx" in readme
     assert "tf-ui" in readme
+    assert "bin/tf" in readme
+    assert "uv run --script" in readme
     assert "/tf ui" not in readme
     assert "Topics Tab" not in readme
     assert "TF_KNOWLEDGE_DIR" not in readme
+
+
+
+def test_tf_pep723_launcher_exists_and_targets_packaged_cli() -> None:
+    launcher = TF_LAUNCHER.read_text(encoding="utf-8")
+
+    assert TF_LAUNCHER.exists()
+    assert "# /// script" in launcher
+    assert '"pi-tk-flow-ui[ui] @ git+https://github.com/legout/pi-tk-flow.git@main"' in launcher
+    assert "from pi_tk_flow_ui.__main__ import main" in launcher
+    assert "raise SystemExit(main())" in launcher
 
 
 

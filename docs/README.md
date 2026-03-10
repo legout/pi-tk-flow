@@ -52,6 +52,19 @@ pi install git:github.com/legout/pi-tf-flow
 pi install git:github.com/legout/pi-tf-flow@v0.7.0
 ```
 
+### Optional PEP 723 `tf` launcher (requires `uv`)
+
+For a zero-install bootstrap of the standalone `tf` CLI, fetch the single-file launcher:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/legout/pi-tk-flow/main/bin/tf -o ~/.local/bin/tf
+chmod +x ~/.local/bin/tf
+
+tf ui
+```
+
+The launcher currently tracks the repository's `main` branch via `uv run --script`. For reproducible installs, prefer the packaged install methods below or replace `@main` in `bin/tf` with a release tag.
+
 ## Repository context
 
 This repository is both:
@@ -390,6 +403,16 @@ It is **not** exposed as a pi command anymore.
 - Python 3.10+
 - UI dependencies: `textual>=0.47.0`, `pyyaml>=6.0`
 - `uv` recommended
+
+### Fastest bootstrap with the PEP 723 `tf` launcher
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/legout/pi-tk-flow/main/bin/tf -o ~/.local/bin/tf
+chmod +x ~/.local/bin/tf
+
+tf ui
+tf ui --web
+```
 
 ### Install globally with `uv tool install`
 

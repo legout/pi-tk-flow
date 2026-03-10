@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from .path_resolution import resolve_plans_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,16 +76,8 @@ class PlanScanner:
         self.plans_dir = Path(plans_dir)
     
     def _find_plans_dir(self) -> Path:
-        """Find the plans directory by walking up from cwd."""
-        cwd = Path.cwd()
-        for parent in [cwd, *cwd.parents]:
-            tf_dir = parent / ".tf"
-            if tf_dir.is_dir():
-                plans_dir = tf_dir / "plans"
-                if plans_dir.is_dir():
-                    return plans_dir
-        # Fallback
-        return cwd / ".tf" / "plans"
+        """Find the current project's plans directory."""
+        return resolve_plans_dir()
     
     def scan(self) -> list[Plan]:
         """Scan all plans from the plans directory.

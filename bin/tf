@@ -1,0 +1,21 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "pi-tk-flow-ui[ui] @ git+https://github.com/legout/pi-tk-flow.git@main"
+# ]
+# ///
+"""PEP 723 bootstrap launcher for the standalone tf CLI.
+
+This script intentionally keeps the real implementation in the packaged
+`pi_tk_flow_ui` module while making first-run usage easy with `uv`.
+
+For reproducible release-specific launchers, replace `@main` above with a
+release tag such as `@v0.7.6` when cutting a release artifact.
+"""
+
+from pi_tk_flow_ui.__main__ import main
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

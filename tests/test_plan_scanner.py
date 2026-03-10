@@ -81,6 +81,23 @@ class TestPlanScannerBehavior:
         scanner = PlanScanner(tmp_path / ".tf" / "plans")
         assert scanner.scan() == []
 
+    def test_auto_discovery_stays_within_repo_boundary(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """Auto-discovery should not escape to an unrelated ancestor .tf directory."""
+        outer = tmp_path / "outer"
+        project = outer / "coding" / "example-project"
+        subdir = project / "nested"
+
+        (outer / ".tf" / "plans" / "wrong-plan").mkdir(parents=True)
+        (project / ".git").mkdir(parents=True)
+        subdir.mkdir(parents=True)
+
+        monkeypatch.chdir(subdir)
+
+        scanner = PlanScanner()
+
+        assert scanner.plans_dir == project / ".tf" / "plans"
+        assert scanner.scan() == []
+
     def test_sorts_newest_date_first(self, tmp_path: Path):
         """Dated plan directories are sorted newest-first."""
         plans_dir = tmp_path / ".tf" / "plans"
