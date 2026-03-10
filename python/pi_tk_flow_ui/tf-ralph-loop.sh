@@ -5,7 +5,7 @@ set -euo pipefail
 # tf-ralph-loop - External Ralph Wiggum Loop
 # =============================================================================
 # Continuously processes tickets from the tk queue using tk ready and
-# pi "/tk-implement <ID>" with configurable execution modes.
+# pi "/tf-implement <ID>" with configurable execution modes.
 #
 # Usage: tf-ralph-loop [OPTIONS]
 #
@@ -403,16 +403,16 @@ build_command() {
 
     case "$mode" in
         clarify)
-            echo "pi \"/tk-implement $ticket_id --clarify\""
+            echo "pi \"/tf-implement $ticket_id --clarify\""
             ;;
         hands-free)
-            echo "pi \"/tk-implement $ticket_id --hands-free\""
+            echo "pi \"/tf-implement $ticket_id --hands-free\""
             ;;
         dispatch)
-            echo "pi \"/tk-implement $ticket_id --dispatch\""
+            echo "pi \"/tf-implement $ticket_id --dispatch\""
             ;;
         interactive)
-            echo "pi \"/tk-implement $ticket_id --interactive\""
+            echo "pi \"/tf-implement $ticket_id --interactive\""
             ;;
         *)
             error "Unknown mode: $mode"
@@ -477,7 +477,6 @@ record_failure() {
 # =============================================================================
 
 # Process a single ticket
-# Sets PI_TK_INTERACTIVE_CHILD=1 for recursion guard
 # Handles dry-run mode
 # Returns exit code from command execution
 process_ticket() {
@@ -504,9 +503,6 @@ process_ticket() {
         return 0
     fi
 
-    # Set recursion guard and execute command
-    export PI_TK_INTERACTIVE_CHILD=1
-
     log "Executing: $command"
     # Capture exit code without triggering set -e
     local exit_code=0
@@ -520,9 +516,6 @@ process_ticket() {
     
     # Clear current-ticket marker
     echo "" > "$STATE_DIR/current-ticket"
-
-    # Clear recursion guard
-    unset PI_TK_INTERACTIVE_CHILD
 
     return "$exit_code"
 }
