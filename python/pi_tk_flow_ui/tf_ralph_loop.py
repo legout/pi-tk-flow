@@ -12,8 +12,13 @@ import sys
 from pathlib import Path
 
 
-def main() -> int:
-    """Run the tf-ralph-loop.sh script with the same arguments."""
+def main(argv: list[str] | None = None) -> int:
+    """Run the tf-ralph-loop.sh script.
+
+    Args:
+        argv: Optional explicit CLI arguments. When omitted, forwards the
+            current process arguments (excluding argv[0]).
+    """
     # Find the script relative to this file (in the package directory)
     package_dir = Path(__file__).parent
     script_path = package_dir / "tf-ralph-loop.sh"
@@ -22,8 +27,10 @@ def main() -> int:
         print(f"Error: tf-ralph-loop.sh not found at {script_path}", file=sys.stderr)
         return 1
 
+    forwarded_args = sys.argv[1:] if argv is None else argv
+
     # Pass all arguments to the shell script
-    return subprocess.call([str(script_path)] + sys.argv[1:])
+    return subprocess.call([str(script_path), *forwarded_args])
 
 
 if __name__ == "__main__":
