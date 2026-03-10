@@ -9,8 +9,10 @@ set -euo pipefail
 #
 # Usage: tf-ralph-loop [OPTIONS]
 #
+# A mode flag is required: --clarify, --hands-free, --dispatch, or --interactive
+#
 # Options:
-#     --clarify       Run with clarify TUI (default)
+#     --clarify       Run with clarify TUI
 #     --hands-free    Run in hands-free mode
 #     --dispatch      Run in dispatch mode
 #     --interactive   Run in interactive mode
@@ -34,7 +36,7 @@ VERSION="1.0.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Defaults
-MODE="clarify"
+MODE=""
 DRY_RUN=false
 VERBOSE=false
 RUN_ONCE=false
@@ -49,8 +51,10 @@ Usage: $SCRIPT_NAME [OPTIONS]
 
 External Ralph Wiggum Loop - Continuously process tk tickets
 
+A mode flag is required. Choose one: --clarify, --hands-free, --dispatch, --interactive
+
 Options:
-    --clarify       Run with clarify TUI (default)
+    --clarify       Run with clarify TUI
     --hands-free    Run in hands-free mode
     --dispatch      Run in dispatch mode
     --interactive   Run in interactive mode
@@ -308,6 +312,12 @@ parse_flags() {
     # Validate mutually exclusive modes
     if [[ $mode_count -gt 1 ]]; then
         error "Cannot combine multiple mode flags (--clarify, --hands-free, --dispatch, --interactive)"
+        exit 1
+    fi
+
+    # Require a mode to be specified
+    if [[ $mode_count -eq 0 ]]; then
+        error "Must specify one mode: --clarify, --hands-free, --dispatch, or --interactive"
         exit 1
     fi
 
